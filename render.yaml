@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: chmod +x start.sh && ./start.sh
     envVars:
       - key: NODE_ENV
         value: production
