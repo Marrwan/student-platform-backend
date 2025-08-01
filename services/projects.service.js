@@ -31,7 +31,7 @@ class ProjectsService {
         }] : []
       });
       
-      // For users, add submission status
+      // For users, add submission status and parse requirements
       if (user.role === 'user') {
         projects.rows = projects.rows.map(project => {
           const submission = project.Submissions?.[0];
@@ -39,8 +39,22 @@ class ProjectsService {
           const deadline = new Date(project.deadline);
           const isOverdue = now > deadline;
           
+          const projectData = project.toJSON();
+          
+          // Parse requirements from JSON string to array
+          if (projectData.requirements) {
+            try {
+              projectData.requirements = JSON.parse(projectData.requirements);
+            } catch (error) {
+              // If parsing fails, treat as plain text and split by newlines
+              projectData.requirements = projectData.requirements.split('\n').filter(req => req.trim());
+            }
+          } else {
+            projectData.requirements = [];
+          }
+          
           return {
-            ...project.toJSON(),
+            ...projectData,
             submissionStatus: submission ? submission.status : 'not_submitted',
             submissionScore: submission ? submission.score : null,
             isOverdue,
@@ -49,7 +63,12 @@ class ProjectsService {
         });
       }
       
-      return projects.rows;
+      return {
+        data: projects.rows,
+        total: projects.count,
+        totalPages: Math.ceil(projects.count / parseInt(limit)),
+        currentPage: parseInt(page)
+      };
     } catch (error) {
       console.error('Get projects error:', error);
       throw error;
@@ -78,6 +97,18 @@ class ProjectsService {
       
       const projectData = project.toJSON();
       
+      // Parse requirements from JSON string to array
+      if (projectData.requirements) {
+        try {
+          projectData.requirements = JSON.parse(projectData.requirements);
+        } catch (error) {
+          // If parsing fails, treat as plain text and split by newlines
+          projectData.requirements = projectData.requirements.split('\n').filter(req => req.trim());
+        }
+      } else {
+        projectData.requirements = [];
+      }
+      
       if (user.role === 'user') {
         const submission = project.Submissions?.[0];
         const now = new Date();
@@ -90,7 +121,7 @@ class ProjectsService {
         projectData.timeRemaining = isOverdue ? 0 : deadline.getTime() - now.getTime();
       }
       
-      return projectData;
+      return { project: projectData };
     } catch (error) {
       console.error('Get project error:', error);
       throw error;

@@ -25,23 +25,26 @@ class AssignmentsService {
         whereClause.classId = { [Op.in]: classIds };
       }
 
+      const includeArray = [
+        {
+          model: Class,
+          as: 'class',
+          attributes: ['id', 'name', 'enrollmentCode']
+        }
+      ];
+
+      if (user.role === 'student') {
+        includeArray.push({
+          model: AssignmentSubmission,
+          as: 'submissions',
+          where: { userId: user.id },
+          required: false
+        });
+      }
+
       const assignments = await Assignment.findAndCountAll({
         where: whereClause,
-        include: [
-          {
-            model: Class,
-            as: 'class',
-            attributes: ['id', 'name', 'enrollmentCode']
-          },
-          user.role === 'student' ? [
-            {
-              model: AssignmentSubmission,
-              as: 'submissions',
-              where: { userId: user.id },
-              required: false
-            }
-          ] : []
-        ],
+        include: includeArray,
         order: [['startDate', 'ASC']],
         limit: parseInt(limit),
         offset: parseInt(offset)

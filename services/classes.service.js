@@ -47,20 +47,23 @@ class ClassesService {
           totalPages: Math.ceil(classes.count / parseInt(limit))
         };
       } else {
-        // Students see only their enrolled classes
-        const enrollments = await ClassEnrollment.findAndCountAll({
-          where: { userId: user.id },
+        // Students see all public classes and their enrollment status
+        const whereClause = { isPublic: true };
+        if (status) whereClause.isActive = status === 'active';
+        
+        const classes = await Class.findAndCountAll({
+          where: whereClause,
           include: [
             {
-              model: Class,
-              as: 'class',
-              include: [
-                {
-                  model: User,
-                  as: 'instructor',
-                  attributes: ['id', 'firstName', 'lastName', 'email']
-                }
-              ]
+              model: User,
+              as: 'instructor',
+              attributes: ['id', 'firstName', 'lastName', 'email']
+            },
+            {
+              model: ClassEnrollment,
+              as: 'enrollments',
+              where: { userId: user.id },
+              required: false
             }
           ],
           order: [['createdAt', 'DESC']],
@@ -68,13 +71,19 @@ class ClassesService {
           offset: parseInt(offset)
         });
 
-        const classes = enrollments.rows.map(enrollment => enrollment.class);
+        // Add enrollment status and student count to each class
+        const classesWithStatus = classes.rows.map(cls => {
+          const classData = cls.toJSON();
+          classData.isEnrolled = cls.enrollments.length > 0;
+          classData.studentCount = cls.enrollments.length;
+          return classData;
+        });
 
         return {
-          classes,
-          total: enrollments.count,
+          classes: classesWithStatus,
+          total: classes.count,
           page: parseInt(page),
-          totalPages: Math.ceil(enrollments.count / parseInt(limit))
+          totalPages: Math.ceil(classes.count / parseInt(limit))
         };
       }
     } catch (error) {
