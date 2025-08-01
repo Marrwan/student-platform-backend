@@ -39,7 +39,11 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000', // Development
+    'https://your-frontend-app.vercel.app', // Production - Update this
+    process.env.FRONTEND_URL // Environment variable
+  ].filter(Boolean),
   credentials: true
 }));
 
@@ -175,14 +179,14 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/out')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/out/index.html'));
-  });
-}
+// Serve frontend in production (commented out since we're deploying separately)
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(express.static(path.join(__dirname, '../frontend/out')));
+//   
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../frontend/out/index.html'));
+//   });
+// }
 
 const PORT = process.env.PORT || 5000;
 

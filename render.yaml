@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: javascript-challenge-api
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: UPLOAD_PATH
+        value: ./uploads
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: SLOW_DOWN_DELAY_AFTER
+        value: 50
+      - key: SLOW_DOWN_DELAY_MS
+        value: 500
+      - key: LATE_FEE_AMOUNT
+        value: 500
+      - key: CURRENCY
+        value: NGN
+
+databases:
+  - name: javascript-challenge-db
+    databaseName: javascript_challenge_db
+    user: javascript_challenge_user
+    plan: starter 
