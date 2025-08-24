@@ -10,6 +10,7 @@ module.exports = (sequelize) => {
     role: { type: DataTypes.ENUM('student', 'teaching_assistant'), defaultValue: 'student' },
     grade: { type: DataTypes.DECIMAL(5, 2), validate: { min: 0, max: 100 } },
     attendance: { type: DataTypes.INTEGER, defaultValue: 0 },
+    attendanceScore: { type: DataTypes.DECIMAL(5, 2), defaultValue: 0, validate: { min: 0, max: 100 } },
     lastActivity: { type: DataTypes.DATE },
     progress: { type: DataTypes.DECIMAL(5, 2), defaultValue: 0, validate: { min: 0, max: 100 } },
     completedAssignments: { type: DataTypes.INTEGER, defaultValue: 0 },

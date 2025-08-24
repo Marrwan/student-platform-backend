@@ -12,4 +12,13 @@ router.get('/stats', authenticateToken, leaderboardController.getLeaderboardStat
 // Get streak leaderboard
 router.get('/streaks', authenticateToken, leaderboardController.getStreakLeaderboard);
 
+// Get class-based leaderboard
+router.get('/class/:classId', authenticateToken, leaderboardController.getClassLeaderboard);
+
+// Get project-based leaderboard
+router.get('/project/:projectId', authenticateToken, leaderboardController.getProjectLeaderboard);
+
+// Update attendance score (admin only)
+router.put('/class/:classId/attendance/:userId', authenticateToken, leaderboardController.updateAttendanceScore);
+
 module.exports = router; 

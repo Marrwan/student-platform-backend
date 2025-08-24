@@ -28,7 +28,7 @@ class AdminController {
   async getProjects(req, res) {
     try {
       const projects = await adminService.getProjects();
-      res.json(projects);
+      res.json({ projects });
     } catch (error) {
       console.error('Error in getProjects controller:', error);
       res.status(500).json({ message: error.message });
