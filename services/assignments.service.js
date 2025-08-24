@@ -277,15 +277,45 @@ class AssignmentsService {
         throw new Error('Access denied');
       }
 
-      // Check if there are any submissions
-      const submissionCount = await AssignmentSubmission.count({ where: { assignmentId } });
-      if (submissionCount > 0) {
-        throw new Error(`Cannot delete assignment with ${submissionCount} submissions`);
-      }
+      // Delete all related data in a transaction
+      const { sequelize } = require('../models');
+      await sequelize.transaction(async (t) => {
+        // Delete all submissions for this assignment
+        await AssignmentSubmission.destroy({
+          where: { assignmentId },
+          transaction: t
+        });
 
-      await assignment.destroy();
+        // Delete attendance scores related to this assignment (if any)
+        await AttendanceScore.destroy({
+          where: { 
+            classId: assignment.classId,
+            notes: { [sequelize.Op.like]: `%assignment:${assignmentId}%` }
+          },
+          transaction: t
+        });
 
-      return { message: 'Assignment deleted successfully' };
+        // Update leaderboard entries to remove this assignment's contribution
+        await ClassLeaderboard.update(
+          {
+            assignmentScore: sequelize.literal(`GREATEST(assignment_score - (
+              SELECT COALESCE(SUM(score), 0) 
+              FROM "AssignmentSubmissions" 
+              WHERE "assignmentId" = '${assignmentId}' 
+              AND "AssignmentSubmissions"."userId" = "ClassLeaderboards"."userId"
+            ), 0)`)
+          },
+          {
+            where: { classId: assignment.classId },
+            transaction: t
+          }
+        );
+
+        // Finally delete the assignment
+        await assignment.destroy({ transaction: t });
+      });
+
+      return { message: 'Assignment and all related data deleted successfully' };
     } catch (error) {
       console.error('Error deleting assignment:', error);
       throw error;
@@ -761,6 +791,124 @@ class AssignmentsService {
       }
     } catch (error) {
       console.error('Error updating class ranks:', error);
+      throw error;
+    }
+  }
+
+  // Get all submissions for an assignment (admin only)
+  async getAssignmentSubmissions(assignmentId, userId, userRole) {
+    try {
+      const assignment = await Assignment.findByPk(assignmentId, {
+        include: [{ model: Class, as: 'class' }]
+      });
+
+      if (!assignment) {
+        throw new Error('Assignment not found');
+      }
+
+      // Check if user has access
+      if (assignment.class.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      const submissions = await AssignmentSubmission.findAll({
+        where: { assignmentId },
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'firstName', 'lastName', 'email']
+          }
+        ],
+        order: [['submittedAt', 'DESC']]
+      });
+
+      return {
+        submissions,
+        total: submissions.length,
+        assignment: {
+          id: assignment.id,
+          title: assignment.title,
+          maxScore: assignment.maxScore,
+          deadline: assignment.deadline
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching assignment submissions:', error);
+      throw error;
+    }
+  }
+
+  // Mark/Review a submission (admin only)
+  async markSubmission(submissionId, reviewData, userId, userRole) {
+    try {
+      const submission = await AssignmentSubmission.findByPk(submissionId, {
+        include: [
+          {
+            model: Assignment,
+            as: 'assignment',
+            include: [{ model: Class, as: 'class' }]
+          },
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'firstName', 'lastName', 'email']
+          }
+        ]
+      });
+
+      if (!submission) {
+        throw new Error('Submission not found');
+      }
+
+      // Check if user has access
+      if (submission.assignment.class.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      const { score, feedback, status = 'reviewed' } = reviewData;
+
+      // Validate score
+      if (score !== undefined && (score < 0 || score > submission.assignment.maxScore)) {
+        throw new Error(`Score must be between 0 and ${submission.assignment.maxScore}`);
+      }
+
+      // Update submission
+      await submission.update({
+        score: score !== undefined ? score : submission.score,
+        feedback: feedback !== undefined ? feedback : submission.feedback,
+        status,
+        reviewedAt: new Date(),
+        reviewedBy: userId
+      });
+
+      // Update leaderboard for the student
+      await this.updateClassLeaderboard(submission.assignment.classId, submission.userId);
+
+      // Send notification to student
+      try {
+        await sendEmail({
+          to: submission.user.email,
+          subject: `Assignment Reviewed: ${submission.assignment.title}`,
+          html: `
+            <h2>Your Assignment Has Been Reviewed</h2>
+            <p><strong>Assignment:</strong> ${submission.assignment.title}</p>
+            <p><strong>Score:</strong> ${score || submission.score}/${submission.assignment.maxScore}</p>
+            <p><strong>Status:</strong> ${status}</p>
+            ${feedback ? `<p><strong>Feedback:</strong> ${feedback}</p>` : ''}
+            <p>Log in to your dashboard to view the full review.</p>
+          `
+        });
+      } catch (emailError) {
+        console.error('Error sending review notification:', emailError);
+      }
+
+      return {
+        message: 'Submission marked successfully',
+        submission
+      };
+    } catch (error) {
+      console.error('Error marking submission:', error);
       throw error;
     }
   }

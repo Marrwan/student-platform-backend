@@ -86,10 +86,26 @@ class AssignmentsController {
   // Get assignment submissions (admin only)
   async getAssignmentSubmissions(req, res) {
     try {
-      const result = await assignmentsService.getAssignmentSubmissions(req.params.id, req.query, req.user.id, req.user.role);
+      const result = await assignmentsService.getAssignmentSubmissions(req.params.id, req.user.id, req.user.role);
       res.json(result);
     } catch (error) {
       console.error('Error in getAssignmentSubmissions controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Mark submission (admin only)
+  async markSubmission(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const result = await assignmentsService.markSubmission(req.params.submissionId, req.body, req.user.id, req.user.role);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in markSubmission controller:', error);
       res.status(500).json({ message: error.message });
     }
   }

@@ -177,6 +177,12 @@ const emailTemplates = {
 // Send email function
 const sendEmail = async ({ to, subject, html, text }) => {
   try {
+    // Check if emails are disabled
+    if (process.env.DISABLE_EMAILS) {
+      console.log('Emails are disabled. Skipping email send:', { to, subject });
+      return { success: true, message: 'Emails are disabled' };
+    }
+
     // Check if email is configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.log('Email not configured, skipping email send:', { to, subject });

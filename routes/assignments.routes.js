@@ -61,6 +61,13 @@ router.post('/:id/submit', authenticateToken, requireUser, upload.single('zipFil
 // Get assignment submissions (admin only)
 router.get('/:id/submissions', authenticateToken, requireAdmin, assignmentsController.getAssignmentSubmissions);
 
+// Mark submission (admin only)
+router.put('/:id/submissions/:submissionId/mark', authenticateToken, requireAdmin, [
+  body('score').optional().isFloat({ min: 0 }).withMessage('Score must be positive'),
+  body('feedback').optional().trim().isLength({ max: 2000 }).withMessage('Feedback too long'),
+  body('status').optional().isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Valid status required')
+], assignmentsController.markSubmission);
+
 // Review submission (admin only)
 router.put('/:id/submissions/:submissionId/review', authenticateToken, requireAdmin, [
   body('status').isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Valid status required'),
