@@ -91,16 +91,14 @@ class AssignmentsService {
         startDate,
         deadline,
         requirements,
-        sampleOutput,
-        starterCode,
-        hints,
-        resources = [],
-        submissionTypes = ['github', 'code', 'zip'],
+        sampleOutputUrl,
+        sampleOutputCode,
+        submissionMode = 'both',
         latePenalty = 10,
         allowLateSubmission = true,
         maxLateHours = 24,
-        requirePayment = false,
-        lateFeeAmount = 500
+        paymentRequired = false,
+        paymentAmount = 500
       } = assignmentData;
 
       // Verify class exists and user has access
@@ -123,16 +121,14 @@ class AssignmentsService {
         startDate: new Date(startDate),
         deadline: new Date(deadline),
         requirements,
-        sampleOutput,
-        starterCode: starterCode || { html: '', css: '', javascript: '' },
-        hints,
-        resources,
-        submissionTypes,
+        sampleOutputUrl,
+        sampleOutputCode,
+        submissionMode,
         latePenalty,
         allowLateSubmission,
         maxLateHours,
-        requirePayment,
-        lateFeeAmount
+        paymentRequired,
+        paymentAmount
       });
 
       // Send notification emails to enrolled students
@@ -219,7 +215,13 @@ class AssignmentsService {
         
         return assignmentData;
       } else {
-        return assignment;
+        // Admin users can access any assignment
+        const assignmentData = assignment.toJSON();
+        assignmentData.isOverdue = assignment.isOverdue();
+        assignmentData.timeRemaining = assignment.getTimeRemaining();
+        assignmentData.canSubmit = assignment.canSubmit();
+        
+        return assignmentData;
       }
     } catch (error) {
       console.error('Error fetching assignment:', error);
