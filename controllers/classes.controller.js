@@ -76,6 +76,12 @@ class ClassesController {
       }
 
       const result = await classesService.joinClass(req.body.enrollmentCode, req.user);
+      
+      // If user is already enrolled, return 200 with special response
+      if (result.alreadyEnrolled) {
+        return res.status(200).json(result);
+      }
+      
       res.status(201).json(result);
     } catch (error) {
       console.error('Error in joinClass controller:', error);

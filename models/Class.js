@@ -17,6 +17,10 @@ module.exports = (sequelize) => {
     description: {
       type: DataTypes.TEXT
     },
+    level: {
+      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'),
+      defaultValue: 'beginner'
+    },
     instructorId: {
       type: DataTypes.UUID,
       allowNull: false,

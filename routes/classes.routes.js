@@ -33,7 +33,7 @@ router.delete('/:id', authenticateToken, requireAdmin, classesController.deleteC
 
 // Join class using enrollment code
 router.post('/join', authenticateToken, requireUser, [
-  body('enrollmentCode').trim().isLength({ min: 6, max: 10 }).withMessage('Invalid enrollment code')
+  body('enrollmentCode').trim().isLength({ min: 3, max: 15 }).withMessage('Invalid enrollment code')
 ], classesController.joinClass);
 
 // Request to join class (for classes that require approval)

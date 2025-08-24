@@ -47,8 +47,8 @@ class ClassesService {
           totalPages: Math.ceil(classes.count / parseInt(limit))
         };
       } else {
-        // Students see all public classes and their enrollment status
-        const whereClause = { isPublic: true };
+        // Students see all active classes and their enrollment status
+        const whereClause = { isActive: true };
         if (status) whereClause.isActive = status === 'active';
         
         const classes = await Class.findAndCountAll({
@@ -264,7 +264,8 @@ class ClassesService {
   async joinClass(enrollmentCode, user) {
     try {
       const classData = await Class.findOne({
-        where: { enrollmentCode, isActive: true }
+        where: { enrollmentCode, isActive: true },
+        include: [{ model: User, as: 'instructor' }]
       });
 
       if (!classData) {
@@ -277,7 +278,12 @@ class ClassesService {
       });
 
       if (existingEnrollment) {
-        throw new Error('You are already enrolled in this class');
+        return {
+          message: 'You are already enrolled in this class',
+          alreadyEnrolled: true,
+          classId: classData.id,
+          className: classData.name
+        };
       }
 
       // Check if class is full

@@ -447,9 +447,21 @@ class AdminService {
   }
 
   // Get admin classes
-  async getClasses() {
+  async getClasses(params = {}) {
     try {
+      const { level, status } = params;
+      const whereClause = {};
+      
+      if (level && level !== 'all') {
+        whereClause.level = level;
+      }
+      
+      if (status && status !== 'all') {
+        whereClause.isActive = status === 'active';
+      }
+      
       const classes = await Class.findAll({
+        where: whereClause,
         include: [
           { model: User, as: 'instructor' },
           { model: ClassEnrollment, as: 'enrollments' },
@@ -462,8 +474,8 @@ class AdminService {
       const classesWithStats = await Promise.all(classes.map(async (cls) => {
         const classData = cls.toJSON();
         
-        // Add missing fields with default values
-        classData.level = 'beginner'; // Default level since it's not in the model
+        // Use actual level from database, fallback to 'beginner' if not set
+        classData.level = classData.level || 'beginner';
         classData.currentStudents = cls.enrollments ? cls.enrollments.length : 0;
         classData.assignments = cls.assignments ? cls.assignments.length : 0;
         classData.instructorName = cls.instructor ? `${cls.instructor.firstName} ${cls.instructor.lastName}` : 'Unknown';
@@ -588,13 +600,8 @@ class AdminService {
             continue;
           }
 
-          // Enroll user in class
-          await ClassEnrollment.create({
-            classId,
-            userId: user.id,
-            enrolledAt: new Date(),
-            status: 'active'
-          });
+          // Don't automatically enroll - just send invitation email
+          // User will need to join using the enrollment code
 
           // Send invitation email
           try {
@@ -626,7 +633,7 @@ class AdminService {
             // Don't fail the entire invitation process if email fails
           }
 
-          results.push({ email, status: 'success', message: 'Invitation sent and user enrolled' });
+          results.push({ email, status: 'success', message: 'Invitation sent successfully' });
         } catch (emailError) {
           console.error(`Error processing invitation for ${email}:`, emailError);
           results.push({ email, status: 'error', message: emailError.message });

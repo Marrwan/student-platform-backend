@@ -176,7 +176,7 @@ class AdminController {
   // Get admin classes
   async getClasses(req, res) {
     try {
-      const classes = await adminService.getClasses();
+      const classes = await adminService.getClasses(req.query);
       res.json(classes);
     } catch (error) {
       console.error('Error in getClasses controller:', error);

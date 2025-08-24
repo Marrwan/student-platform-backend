@@ -16,7 +16,13 @@ class ProjectsService {
       }
       
       if (difficulty) {
-        whereClause.difficulty = difficulty;
+        // Map frontend difficulty values to backend enum values
+        const difficultyMap = {
+          'beginner': 'easy',
+          'intermediate': 'medium',
+          'advanced': 'hard'
+        };
+        whereClause.difficulty = difficultyMap[difficulty] || difficulty;
       }
       
       const projects = await Project.findAndCountAll({
