@@ -65,6 +65,35 @@ module.exports = (sequelize) => {
     sampleOutput: {
       type: DataTypes.TEXT
     },
+    sampleOutputUrl: {
+      type: DataTypes.STRING,
+      validate: {
+        isUrl: true
+      }
+    },
+    sampleOutputCode: {
+      type: DataTypes.JSONB,
+      defaultValue: {
+        html: '',
+        css: '',
+        javascript: ''
+      }
+    },
+    submissionMode: {
+      type: DataTypes.ENUM('code', 'link', 'both'),
+      defaultValue: 'both',
+      allowNull: false
+    },
+    paymentRequired: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
+    paymentAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 500,
+      allowNull: false
+    },
     starterCode: {
       type: DataTypes.JSONB,
       defaultValue: {

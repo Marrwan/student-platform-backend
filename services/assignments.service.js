@@ -1,4 +1,4 @@
-const { User, Class, Assignment, AssignmentSubmission, ClassEnrollment, sequelize } = require('../models');
+const { User, Class, Assignment, AssignmentSubmission, ClassEnrollment, AttendanceScore, ClassLeaderboard, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { sendEmail } = require('../utils/email');
 
@@ -289,7 +289,7 @@ class AssignmentsService {
   // Submit assignment
   async submitAssignment(assignmentId, submissionData, user, file) {
     try {
-      const { submissionType, githubLink, codeSubmission } = submissionData;
+      const { submissionType, githubLink, codeSubmission, submissionLink } = submissionData;
 
       const assignment = await Assignment.findByPk(assignmentId, {
         include: [{ model: Class, as: 'class' }]
@@ -319,7 +319,17 @@ class AssignmentsService {
       });
 
       if (existingSubmission) {
-        throw new Error('You have already submitted this assignment');
+        // Update existing submission
+        await existingSubmission.destroy();
+      }
+
+      // Validate submission based on assignment submission mode
+      if (assignment.submissionMode === 'code' && submissionType !== 'code') {
+        throw new Error('This assignment only accepts code submissions');
+      }
+
+      if (assignment.submissionMode === 'link' && submissionType !== 'link') {
+        throw new Error('This assignment only accepts link submissions');
       }
 
       // Validate submission based on type
@@ -329,6 +339,10 @@ class AssignmentsService {
 
       if (submissionType === 'code' && !codeSubmission) {
         throw new Error('Code submission is required for code submissions');
+      }
+
+      if (submissionType === 'link' && !submissionLink) {
+        throw new Error('Submission link is required for link submissions');
       }
 
       if (submissionType === 'zip' && !file) {
@@ -347,6 +361,8 @@ class AssignmentsService {
         submissionDataToSave.githubLink = githubLink;
       } else if (submissionType === 'code') {
         submissionDataToSave.codeSubmission = codeSubmission;
+      } else if (submissionType === 'link') {
+        submissionDataToSave.submissionLink = submissionLink;
       } else if (submissionType === 'zip') {
         submissionDataToSave.zipFileUrl = file.path; // Store file path
       }
@@ -356,9 +372,20 @@ class AssignmentsService {
       if (isLate) {
         submissionDataToSave.isLate = true;
         submissionDataToSave.latePenalty = assignment.calculateLatePenalty(new Date());
+        
+        // If payment is required for late submissions
+        if (assignment.paymentRequired) {
+          submissionDataToSave.paymentStatus = 'pending';
+          submissionDataToSave.paymentAmount = assignment.paymentAmount;
+          submissionDataToSave.isBlocked = true;
+          submissionDataToSave.blockReason = 'Late submission requires payment to regain access';
+        }
       }
 
       const submission = await AssignmentSubmission.create(submissionDataToSave);
+
+      // Update leaderboard
+      await this.updateClassLeaderboard(assignment.classId, user.id);
 
       // Send notification email to instructor
       await sendEmail({
@@ -372,12 +399,15 @@ class AssignmentsService {
           <p><strong>Submission Type:</strong> ${submissionType}</p>
           <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
           ${isLate ? `<p><strong>Status:</strong> Late submission (${submission.latePenalty} point penalty)</p>` : ''}
+          ${submission.isBlocked ? `<p><strong>Payment Required:</strong> ₦${assignment.paymentAmount} to regain access</p>` : ''}
         `
       });
 
       return {
         message: 'Assignment submitted successfully',
-        submission
+        submission,
+        isLate,
+        requiresPayment: submission.isBlocked
       };
     } catch (error) {
       console.error('Error submitting assignment:', error);
@@ -544,6 +574,271 @@ class AssignmentsService {
       };
     } catch (error) {
       console.error('Error unlocking assignment:', error);
+      throw error;
+    }
+  }
+
+  // Award attendance score (admin only)
+  async awardAttendanceScore(classId, userId, score, notes, awardedBy) {
+    try {
+      const enrollment = await ClassEnrollment.findOne({
+        where: { classId, userId }
+      });
+
+      if (!enrollment) {
+        throw new Error('Student not enrolled in this class');
+      }
+
+      // Check if attendance score already exists for this date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const existingScore = await AttendanceScore.findOne({
+        where: {
+          classId,
+          userId,
+          attendanceDate: {
+            [Op.gte]: today,
+            [Op.lt]: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+          }
+        }
+      });
+
+      if (existingScore) {
+        // Update existing score
+        await existingScore.update({
+          score,
+          notes,
+          awardedBy
+        });
+      } else {
+        // Create new score
+        await AttendanceScore.create({
+          classId,
+          userId,
+          score,
+          notes,
+          awardedBy,
+          attendanceDate: new Date()
+        });
+      }
+
+      // Update leaderboard
+      await this.updateClassLeaderboard(classId, userId);
+
+      return {
+        message: 'Attendance score awarded successfully'
+      };
+    } catch (error) {
+      console.error('Error awarding attendance score:', error);
+      throw error;
+    }
+  }
+
+  // Get class leaderboard
+  async getClassLeaderboard(classId, params = {}) {
+    try {
+      const { page = 1, limit = 20 } = params;
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const leaderboard = await ClassLeaderboard.findAndCountAll({
+        where: { classId },
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'firstName', 'lastName', 'email']
+          }
+        ],
+        order: [['totalScore', 'DESC'], ['rank', 'ASC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      return {
+        leaderboard: leaderboard.rows,
+        total: leaderboard.count,
+        page: parseInt(page),
+        totalPages: Math.ceil(leaderboard.count / parseInt(limit))
+      };
+    } catch (error) {
+      console.error('Error fetching class leaderboard:', error);
+      throw error;
+    }
+  }
+
+  // Update class leaderboard for a specific user
+  async updateClassLeaderboard(classId, userId) {
+    try {
+      // Get all assignments for the class
+      const assignments = await Assignment.findAll({
+        where: { classId },
+        attributes: ['id', 'maxScore']
+      });
+
+      // Get user's assignment submissions
+      const submissions = await AssignmentSubmission.findAll({
+        where: {
+          assignmentId: { [Op.in]: assignments.map(a => a.id) },
+          userId
+        },
+        attributes: ['assignmentId', 'finalScore', 'score']
+      });
+
+      // Calculate assignment score
+      const assignmentScore = submissions.reduce((total, submission) => {
+        return total + (submission.finalScore || submission.score || 0);
+      }, 0);
+
+      // Get attendance scores
+      const attendanceScores = await AttendanceScore.findAll({
+        where: { classId, userId },
+        attributes: ['score']
+      });
+
+      const attendanceScore = attendanceScores.reduce((total, score) => {
+        return total + score.score;
+      }, 0);
+
+      const totalScore = assignmentScore + attendanceScore;
+
+      // Get or create leaderboard entry
+      let leaderboardEntry = await ClassLeaderboard.findOne({
+        where: { classId, userId }
+      });
+
+      if (!leaderboardEntry) {
+        leaderboardEntry = await ClassLeaderboard.create({
+          classId,
+          userId,
+          totalScore: 0,
+          assignmentScore: 0,
+          attendanceScore: 0,
+          assignmentsCompleted: 0,
+          totalAssignments: assignments.length,
+          attendanceCount: 0,
+          totalSessions: 0
+        });
+      }
+
+      // Update leaderboard entry
+      await leaderboardEntry.update({
+        totalScore,
+        assignmentScore,
+        attendanceScore,
+        assignmentsCompleted: submissions.length,
+        totalAssignments: assignments.length,
+        attendanceCount: attendanceScores.length,
+        lastUpdated: new Date()
+      });
+
+      // Update ranks for all students in the class
+      await this.updateClassRanks(classId);
+
+      return leaderboardEntry;
+    } catch (error) {
+      console.error('Error updating class leaderboard:', error);
+      throw error;
+    }
+  }
+
+  // Update ranks for all students in a class
+  async updateClassRanks(classId) {
+    try {
+      const leaderboardEntries = await ClassLeaderboard.findAll({
+        where: { classId },
+        order: [['totalScore', 'DESC']]
+      });
+
+      for (let i = 0; i < leaderboardEntries.length; i++) {
+        await leaderboardEntries[i].update({ rank: i + 1 });
+      }
+    } catch (error) {
+      console.error('Error updating class ranks:', error);
+      throw error;
+    }
+  }
+
+  // Check if user is blocked from accessing the platform
+  async checkUserBlockStatus(userId) {
+    try {
+      const overdueSubmissions = await AssignmentSubmission.findAll({
+        where: {
+          userId,
+          isLate: true,
+          paymentStatus: 'pending'
+        },
+        include: [
+          {
+            model: Assignment,
+            as: 'assignment',
+            attributes: ['title', 'paymentAmount']
+          }
+        ]
+      });
+
+      if (overdueSubmissions.length === 0) {
+        return { isBlocked: false, reason: null, totalAmount: 0 };
+      }
+
+      const totalAmount = overdueSubmissions.reduce((total, submission) => {
+        return total + (submission.assignment.paymentAmount || 500);
+      }, 0);
+
+      return {
+        isBlocked: true,
+        reason: `You have ${overdueSubmissions.length} overdue assignment(s) that require payment to regain access.`,
+        totalAmount,
+        overdueSubmissions: overdueSubmissions.map(s => ({
+          id: s.id,
+          assignmentTitle: s.assignment.title,
+          amount: s.assignment.paymentAmount || 500
+        }))
+      };
+    } catch (error) {
+      console.error('Error checking user block status:', error);
+      throw error;
+    }
+  }
+
+  // Process payment for overdue assignments
+  async processOverduePayment(userId, paymentReference, amount) {
+    try {
+      const overdueSubmissions = await AssignmentSubmission.findAll({
+        where: {
+          userId,
+          isLate: true,
+          paymentStatus: 'pending'
+        }
+      });
+
+      if (overdueSubmissions.length === 0) {
+        throw new Error('No overdue submissions found');
+      }
+
+      // Update all overdue submissions as paid
+      await AssignmentSubmission.update(
+        {
+          paymentStatus: 'paid',
+          paymentReference,
+          paymentAmount: amount / overdueSubmissions.length,
+          isBlocked: false
+        },
+        {
+          where: {
+            userId,
+            isLate: true,
+            paymentStatus: 'pending'
+          }
+        }
+      );
+
+      return {
+        message: 'Payment processed successfully',
+        submissionsUpdated: overdueSubmissions.length
+      };
+    } catch (error) {
+      console.error('Error processing overdue payment:', error);
       throw error;
     }
   }

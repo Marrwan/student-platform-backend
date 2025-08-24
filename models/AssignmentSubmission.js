@@ -33,6 +33,12 @@ module.exports = (sequelize) => {
         isUrl: true
       }
     },
+    submissionLink: {
+      type: DataTypes.STRING,
+      validate: {
+        isUrl: true
+      }
+    },
     codeSubmission: {
       type: DataTypes.JSONB,
       defaultValue: {
@@ -99,6 +105,27 @@ module.exports = (sequelize) => {
     metadata: {
       type: DataTypes.JSONB,
       defaultValue: {}
+    },
+    paymentStatus: {
+      type: DataTypes.ENUM('pending', 'paid', 'failed'),
+      defaultValue: 'pending',
+      allowNull: false
+    },
+    paymentAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+      allowNull: false
+    },
+    paymentReference: {
+      type: DataTypes.STRING
+    },
+    isBlocked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
+    blockReason: {
+      type: DataTypes.TEXT
     }
   }, {
     indexes: [

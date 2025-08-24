@@ -66,4 +66,23 @@ router.put('/:id/submissions/:submissionId/review', authenticateToken, requireAd
 // Unlock assignment (admin only)
 router.post('/:id/unlock', authenticateToken, requireAdmin, assignmentsController.unlockAssignment);
 
+// Award attendance score (admin only)
+router.post('/:id/attendance', authenticateToken, requireAdmin, [
+  body('userId').isUUID().withMessage('Valid user ID required'),
+  body('score').isFloat({ min: 0, max: 100 }).withMessage('Score must be between 0 and 100'),
+  body('notes').optional().trim().isLength({ max: 1000 }).withMessage('Notes too long')
+], assignmentsController.awardAttendanceScore);
+
+// Get class leaderboard
+router.get('/:id/leaderboard', authenticateToken, assignmentsController.getClassLeaderboard);
+
+// Check user block status
+router.get('/user/block-status', authenticateToken, assignmentsController.checkUserBlockStatus);
+
+// Process overdue payment
+router.post('/user/process-payment', authenticateToken, [
+  body('paymentReference').trim().isLength({ min: 1 }).withMessage('Payment reference required'),
+  body('amount').isFloat({ min: 0 }).withMessage('Valid amount required')
+], assignmentsController.processOverduePayment);
+
 module.exports = router; 

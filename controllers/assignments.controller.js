@@ -120,6 +120,72 @@ class AssignmentsController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // Award attendance score (admin only)
+  async awardAttendanceScore(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { userId, score, notes } = req.body;
+      const result = await assignmentsService.awardAttendanceScore(
+        req.params.id, 
+        userId, 
+        score, 
+        notes, 
+        req.user.id
+      );
+      res.json(result);
+    } catch (error) {
+      console.error('Error in awardAttendanceScore controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Get class leaderboard
+  async getClassLeaderboard(req, res) {
+    try {
+      const result = await assignmentsService.getClassLeaderboard(req.params.id, req.query);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getClassLeaderboard controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Check user block status
+  async checkUserBlockStatus(req, res) {
+    try {
+      const result = await assignmentsService.checkUserBlockStatus(req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in checkUserBlockStatus controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Process overdue payment
+  async processOverduePayment(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { paymentReference, amount } = req.body;
+      const result = await assignmentsService.processOverduePayment(
+        req.user.id, 
+        paymentReference, 
+        amount
+      );
+      res.json(result);
+    } catch (error) {
+      console.error('Error in processOverduePayment controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
 }
 
 module.exports = new AssignmentsController(); 
