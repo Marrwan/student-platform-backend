@@ -174,6 +174,16 @@ class ClassesService {
             where: user.role === 'student' ? { isUnlocked: true } : {},
             required: false,
             order: [['startDate', 'ASC']]
+          },
+          {
+            model: sequelize.models.ClassSchedule,
+            as: 'schedule',
+            where: { isActive: true },
+            required: false,
+            order: [
+              ['dayOfWeek', 'ASC'],
+              ['startTime', 'ASC']
+            ]
           }
         ]
       });
@@ -619,6 +629,150 @@ class ClassesService {
       };
     } catch (error) {
       console.error('Error sending invitations:', error);
+      throw error;
+    }
+  }
+
+  // Create class schedule
+  async createClassSchedule(classId, scheduleData, userId, userRole) {
+    try {
+      const classData = await Class.findByPk(classId);
+      
+      if (!classData) {
+        throw new Error('Class not found');
+      }
+
+      // Check if user is the instructor or admin
+      if (classData.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      // Validate time format
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(scheduleData.startTime) || !timeRegex.test(scheduleData.endTime)) {
+        throw new Error('Invalid time format. Use HH:MM format');
+      }
+
+      // Check if start time is before end time
+      if (scheduleData.startTime >= scheduleData.endTime) {
+        throw new Error('Start time must be before end time');
+      }
+
+      // Check for conflicting schedules on the same day
+      const existingSchedule = await sequelize.models.ClassSchedule.findOne({
+        where: {
+          classId,
+          dayOfWeek: scheduleData.dayOfWeek,
+          isActive: true
+        }
+      });
+
+      if (existingSchedule) {
+        throw new Error(`A schedule already exists for ${scheduleData.dayOfWeek}`);
+      }
+
+      const schedule = await sequelize.models.ClassSchedule.create({
+        classId,
+        dayOfWeek: scheduleData.dayOfWeek,
+        startTime: scheduleData.startTime,
+        endTime: scheduleData.endTime,
+        type: scheduleData.type,
+        location: scheduleData.location,
+        meetingLink: scheduleData.meetingLink
+      });
+
+      return {
+        message: 'Class schedule created successfully',
+        schedule
+      };
+    } catch (error) {
+      console.error('Error creating class schedule:', error);
+      throw error;
+    }
+  }
+
+  // Update class schedule
+  async updateClassSchedule(scheduleId, updateData, userId, userRole) {
+    try {
+      const schedule = await sequelize.models.ClassSchedule.findByPk(scheduleId, {
+        include: [{ model: Class, as: 'class' }]
+      });
+
+      if (!schedule) {
+        throw new Error('Schedule not found');
+      }
+
+      // Check if user is the instructor or admin
+      if (schedule.class.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      // Validate time format if provided
+      if (updateData.startTime || updateData.endTime) {
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        const startTime = updateData.startTime || schedule.startTime;
+        const endTime = updateData.endTime || schedule.endTime;
+        
+        if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+          throw new Error('Invalid time format. Use HH:MM format');
+        }
+
+        if (startTime >= endTime) {
+          throw new Error('Start time must be before end time');
+        }
+      }
+
+      // Check for conflicting schedules if day is being changed
+      if (updateData.dayOfWeek && updateData.dayOfWeek !== schedule.dayOfWeek) {
+        const existingSchedule = await sequelize.models.ClassSchedule.findOne({
+          where: {
+            classId: schedule.classId,
+            dayOfWeek: updateData.dayOfWeek,
+            isActive: true,
+            id: { [sequelize.Op.ne]: scheduleId }
+          }
+        });
+
+        if (existingSchedule) {
+          throw new Error(`A schedule already exists for ${updateData.dayOfWeek}`);
+        }
+      }
+
+      await schedule.update(updateData);
+
+      return {
+        message: 'Class schedule updated successfully',
+        schedule
+      };
+    } catch (error) {
+      console.error('Error updating class schedule:', error);
+      throw error;
+    }
+  }
+
+  // Delete class schedule
+  async deleteClassSchedule(scheduleId, userId, userRole) {
+    try {
+      const schedule = await sequelize.models.ClassSchedule.findByPk(scheduleId, {
+        include: [{ model: Class, as: 'class' }]
+      });
+
+      if (!schedule) {
+        throw new Error('Schedule not found');
+      }
+
+      // Check if user is the instructor or admin
+      if (schedule.class.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      await schedule.destroy();
+
+      return {
+        message: 'Class schedule deleted successfully'
+      };
+    } catch (error) {
+      console.error('Error deleting class schedule:', error);
       throw error;
     }
   }

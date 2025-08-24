@@ -55,4 +55,25 @@ router.post('/:id/invite', authenticateToken, requireAdmin, [
   body('message').optional().trim().isLength({ max: 500 }).withMessage('Message too long')
 ], classesController.inviteStudents);
 
+// Class schedule management
+router.post('/:id/schedule', authenticateToken, requireAdmin, [
+  body('dayOfWeek').isIn(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']).withMessage('Valid day of week required'),
+  body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time required (HH:MM)'),
+  body('endTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time required (HH:MM)'),
+  body('type').isIn(['virtual', 'physical']).withMessage('Type must be virtual or physical'),
+  body('location').optional().trim().isLength({ max: 200 }).withMessage('Location too long'),
+  body('meetingLink').optional().isURL().withMessage('Valid meeting link required')
+], classesController.createClassSchedule);
+
+router.put('/schedule/:scheduleId', authenticateToken, requireAdmin, [
+  body('dayOfWeek').optional().isIn(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']).withMessage('Valid day of week required'),
+  body('startTime').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time required (HH:MM)'),
+  body('endTime').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time required (HH:MM)'),
+  body('type').optional().isIn(['virtual', 'physical']).withMessage('Type must be virtual or physical'),
+  body('location').optional().trim().isLength({ max: 200 }).withMessage('Location too long'),
+  body('meetingLink').optional().isURL().withMessage('Valid meeting link required')
+], classesController.updateClassSchedule);
+
+router.delete('/schedule/:scheduleId', authenticateToken, requireAdmin, classesController.deleteClassSchedule);
+
 module.exports = router; 

@@ -142,6 +142,49 @@ class ClassesController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // Create class schedule
+  async createClassSchedule(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const result = await classesService.createClassSchedule(req.params.id, req.body, req.user.id, req.user.role);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in createClassSchedule controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Update class schedule
+  async updateClassSchedule(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const result = await classesService.updateClassSchedule(req.params.scheduleId, req.body, req.user.id, req.user.role);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in updateClassSchedule controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Delete class schedule
+  async deleteClassSchedule(req, res) {
+    try {
+      const result = await classesService.deleteClassSchedule(req.params.scheduleId, req.user.id, req.user.role);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in deleteClassSchedule controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
 }
 
 module.exports = new ClassesController(); 

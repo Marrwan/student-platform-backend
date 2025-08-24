@@ -8,7 +8,10 @@ class AuthController {
       res.status(201).json(result);
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -19,7 +22,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Email verification error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -30,7 +36,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Resend verification error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -45,13 +54,17 @@ class AuthController {
       // Handle needsVerification case
       if (error.needsVerification) {
         return res.status(401).json({ 
+          success: false,
           message: error.message,
           needsVerification: true,
           email: error.email
         });
       }
       
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -62,7 +75,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Forgot password error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -73,7 +89,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Reset password error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -84,7 +103,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Get current user error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -95,7 +117,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Get profile error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -106,7 +131,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Update profile error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -117,7 +145,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Change password error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -128,7 +159,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Update notifications error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 
@@ -139,7 +173,10 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ 
+        success: false,
+        message: error.message 
+      });
     }
   }
 }

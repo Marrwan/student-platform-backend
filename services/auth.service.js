@@ -61,7 +61,7 @@ class AuthService {
     }
   }
 
-  // Verify email
+  // Verify email with OTP
   async verifyEmail(token) {
     try {
       if (!token) {
@@ -117,7 +117,7 @@ class AuthService {
     }
   }
 
-  // Resend verification email
+  // Resend verification email with rate limiting
   async resendVerification(email) {
     try {
       if (!email) {
@@ -131,6 +131,14 @@ class AuthService {
 
       if (user.emailVerified) {
         throw new Error('Email is already verified.');
+      }
+
+      // Check if user has a recent OTP that hasn't expired yet
+      if (user.emailVerificationExpires && user.emailVerificationExpires > new Date()) {
+        const timeLeft = Math.ceil((user.emailVerificationExpires - new Date()) / 1000 / 60);
+        if (timeLeft > 8) { // If more than 8 minutes left, don't allow resend
+          throw new Error(`Please wait ${timeLeft} minutes before requesting a new verification code.`);
+        }
       }
 
       // Generate new 6-digit OTP
@@ -159,14 +167,18 @@ class AuthService {
         `
       });
 
-      return { message: 'Verification code sent successfully.' };
+      return { 
+        success: true,
+        message: 'Verification code sent successfully.',
+        expiresIn: 10 * 60 // 10 minutes in seconds
+      };
     } catch (error) {
       console.error('Resend verification error:', error);
       throw error;
     }
   }
 
-  // Login user
+  // Login user - Fixed to handle unverified users properly
   async login(loginData) {
     try {
       const { email, password, verificationOtp } = loginData;
@@ -225,7 +237,7 @@ class AuthService {
           };
         } else {
           // No verification OTP provided, return needsVerification flag
-          const error = new Error('Please verify your email address before logging in.');
+          const error = new Error('Your account is not verified. Please verify your email before proceeding.');
           error.needsVerification = true;
           error.email = user.email;
           throw error;

@@ -2,25 +2,31 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { registerValidation, loginValidation } = require('../middleware/validation');
+const { 
+  verificationLimiter, 
+  loginLimiter, 
+  registrationLimiter, 
+  passwordResetLimiter 
+} = require('../middleware/rateLimit');
 const authController = require('../controllers/auth.controller');
 
 // Register user
-router.post('/register', registerValidation, authController.register);
+router.post('/register', registrationLimiter, registerValidation, authController.register);
 
 // Verify email
-router.post('/verify-email', authController.verifyEmail);
+router.post('/verify-email', verificationLimiter, authController.verifyEmail);
 
 // Resend verification email
-router.post('/resend-verification', authController.resendVerification);
+router.post('/resend-verification', verificationLimiter, authController.resendVerification);
 
 // Login user
-router.post('/login', loginValidation, authController.login);
+router.post('/login', loginLimiter, loginValidation, authController.login);
 
 // Forgot password
-router.post('/forgot-password', authController.forgotPassword);
+router.post('/forgot-password', passwordResetLimiter, authController.forgotPassword);
 
 // Reset password
-router.post('/reset-password', authController.resetPassword);
+router.post('/reset-password', passwordResetLimiter, authController.resetPassword);
 
 // Get current user
 router.get('/me', authenticateToken, authController.getCurrentUser);

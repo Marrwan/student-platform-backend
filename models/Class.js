@@ -116,6 +116,10 @@ module.exports = (sequelize) => {
       foreignKey: 'classId',
       as: 'challenges'
     });
+    Class.hasMany(models.ClassSchedule, {
+      foreignKey: 'classId',
+      as: 'schedule'
+    });
   };
 
   return Class;
