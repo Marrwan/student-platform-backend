@@ -166,9 +166,7 @@ class ClassesService {
               {
                 model: User,
                 as: 'student',
-                attributes: user.role === 'student' 
-                  ? ['id', 'firstName', 'lastName'] // Students can't see other students' emails
-                  : ['id', 'firstName', 'lastName', 'email', 'role']
+                attributes: ['id', 'firstName', 'lastName'] // All users can see student names
               }
             ]
           },
@@ -216,10 +214,20 @@ class ClassesService {
 
       // Filter enrollments based on user role
       if (user.role === 'student') {
-        // Students can only see their own enrollment data
-        classWithCounts.enrollments = classWithCounts.enrollments.filter(
-          enrollment => enrollment.student.id === user.id
-        );
+        // Students can see all students but only their own progress data
+        classWithCounts.enrollments = classWithCounts.enrollments.map(enrollment => {
+          const enrollmentData = { ...enrollment };
+          
+          // If this is not the current user's enrollment, remove sensitive data
+          if (enrollment.student.id !== user.id) {
+            delete enrollmentData.progress;
+            delete enrollmentData.averageScore;
+            delete enrollmentData.status;
+            delete enrollmentData.enrolledAt;
+          }
+          
+          return enrollmentData;
+        });
         
         // Remove sensitive data from assignments
         if (classWithCounts.assignments) {
