@@ -10,8 +10,8 @@ class ProjectsService {
       const offset = (page - 1) * limit;
       const whereClause = {};
       
-      // Users can only see unlocked projects
-      if (user.role === 'user') {
+      // Users can only see unlocked projects, admins can see all
+      if (user.role === 'student') {
         whereClause.isUnlocked = true;
       }
       
@@ -24,44 +24,48 @@ class ProjectsService {
         order: [['day', 'ASC']],
         limit: parseInt(limit),
         offset: parseInt(offset),
-        include: user.role === 'user' ? [{
+        include: user.role === 'student' ? [{
           model: Submission,
           where: { userId: user.id },
           required: false
         }] : []
       });
       
-      // For users, add submission status and parse requirements
-      if (user.role === 'user') {
-        projects.rows = projects.rows.map(project => {
-          const submission = project.Submissions?.[0];
-          const now = new Date();
-          const deadline = new Date(project.deadline);
-          const isOverdue = now > deadline;
-          
-          const projectData = project.toJSON();
-          
-          // Parse requirements from JSON string to array
-          if (projectData.requirements) {
-            try {
-              projectData.requirements = JSON.parse(projectData.requirements);
-            } catch (error) {
-              // If parsing fails, treat as plain text and split by newlines
-              projectData.requirements = projectData.requirements.split('\n').filter(req => req.trim());
-            }
-          } else {
-            projectData.requirements = [];
+      // Process projects for all users (parse requirements, add status info)
+      projects.rows = projects.rows.map(project => {
+        const submission = project.Submissions?.[0];
+        const now = new Date();
+        const deadline = new Date(project.deadline);
+        const isOverdue = now > deadline;
+        
+        const projectData = project.toJSON();
+        
+        // Parse requirements from JSON string to array
+        if (projectData.requirements) {
+          try {
+            projectData.requirements = JSON.parse(projectData.requirements);
+          } catch (error) {
+            // If parsing fails, treat as plain text and split by newlines
+            projectData.requirements = projectData.requirements.split('\n').filter(req => req.trim());
           }
-          
-          return {
-            ...projectData,
-            submissionStatus: submission ? submission.status : 'not_submitted',
-            submissionScore: submission ? submission.score : null,
-            isOverdue,
-            timeRemaining: isOverdue ? 0 : deadline.getTime() - now.getTime()
-          };
-        });
-      }
+        } else {
+          projectData.requirements = [];
+        }
+        
+        const processedProject = {
+          ...projectData,
+          isOverdue,
+          timeRemaining: isOverdue ? 0 : deadline.getTime() - now.getTime()
+        };
+        
+        // Add submission info for students
+        if (user.role === 'student') {
+          processedProject.submissionStatus = submission ? submission.status : 'not_submitted';
+          processedProject.submissionScore = submission ? submission.score : null;
+        }
+        
+        return processedProject;
+      });
       
       return {
         data: projects.rows,
@@ -79,7 +83,7 @@ class ProjectsService {
   async getProjectById(projectId, user) {
     try {
       const project = await Project.findByPk(projectId, {
-        include: user.role === 'user' ? [{
+        include: user.role === 'student' ? [{
           model: Submission,
           where: { userId: user.id },
           required: false
@@ -90,8 +94,8 @@ class ProjectsService {
         throw new Error('Project not found.');
       }
       
-      // Users can only access unlocked projects
-      if (user.role === 'user' && !project.isUnlocked) {
+      // Students can only access unlocked projects
+      if (user.role === 'student' && !project.isUnlocked) {
         throw new Error('This project is not yet unlocked.');
       }
       
@@ -109,16 +113,19 @@ class ProjectsService {
         projectData.requirements = [];
       }
       
-      if (user.role === 'user') {
+      // Add time-related info for all users
+      const now = new Date();
+      const deadline = new Date(project.deadline);
+      const isOverdue = now > deadline;
+      
+      projectData.isOverdue = isOverdue;
+      projectData.timeRemaining = isOverdue ? 0 : deadline.getTime() - now.getTime();
+      
+      // Add submission info for students
+      if (user.role === 'student') {
         const submission = project.Submissions?.[0];
-        const now = new Date();
-        const deadline = new Date(project.deadline);
-        const isOverdue = now > deadline;
-        
         projectData.submissionStatus = submission ? submission.status : 'not_submitted';
         projectData.submissionScore = submission ? submission.score : null;
-        projectData.isOverdue = isOverdue;
-        projectData.timeRemaining = isOverdue ? 0 : deadline.getTime() - now.getTime();
       }
       
       return { project: projectData };
