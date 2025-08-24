@@ -270,8 +270,11 @@ class AuthService {
       }
 
       const user = await User.findOne({ where: { email } });
+      
+      // For security reasons, always return success message even if user doesn't exist
       if (!user) {
-        throw new Error('User not found.');
+        console.log(`Password reset requested for non-existent email: ${email}`);
+        return { message: 'If an account with that email exists, a password reset link has been sent.' };
       }
 
       // Generate reset token
@@ -286,24 +289,31 @@ class AuthService {
       // Send reset email
       const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
       
-      await sendEmail({
-        to: email,
-        subject: 'Password Reset - JavaScript Learning Platform',
-        html: `
-          <h2>Password Reset Request</h2>
-          <p>Hi ${user.firstName} ${user.lastName},</p>
-          <p>You requested a password reset. Click the link below to reset your password:</p>
-          <p><a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this reset, please ignore this email.</p>
-          <p>Best regards,<br>The JavaScript Learning Platform Team</p>
-        `
-      });
+      try {
+        await sendEmail({
+          to: email,
+          subject: 'Password Reset - JavaScript Learning Platform',
+          html: `
+            <h2>Password Reset Request</h2>
+            <p>Hi ${user.firstName} ${user.lastName},</p>
+            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <p><a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this reset, please ignore this email.</p>
+            <p>Best regards,<br>The JavaScript Learning Platform Team</p>
+          `
+        });
+        console.log(`Password reset email sent successfully to: ${email}`);
+      } catch (emailError) {
+        console.error(`Failed to send password reset email to ${email}:`, emailError);
+        // Don't throw error - still return success message for security
+      }
 
-      return { message: 'Password reset email sent successfully.' };
+      return { message: 'If an account with that email exists, a password reset link has been sent.' };
     } catch (error) {
       console.error('Forgot password error:', error);
-      throw error;
+      // For security, always return success message
+      return { message: 'If an account with that email exists, a password reset link has been sent.' };
     }
   }
 
@@ -327,9 +337,12 @@ class AuthService {
         throw new Error('Reset token has expired.');
       }
 
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(password, 12);
+      
       // Update password and clear reset token
       await user.update({
-        password,
+        password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null
       });
