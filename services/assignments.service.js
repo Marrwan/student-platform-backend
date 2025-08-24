@@ -165,28 +165,32 @@ class AssignmentsService {
   // Get single assignment details
   async getAssignmentById(assignmentId, user) {
     try {
-      const assignment = await Assignment.findByPk(assignmentId, {
-        include: [
-          {
-            model: Class,
-            as: 'class',
-            include: [
-              {
-                model: User,
-                as: 'instructor',
-                attributes: ['id', 'firstName', 'lastName', 'email']
-              }
-            ]
-          },
-          user.role === 'student' ? [
+      const includeArray = [
+        {
+          model: Class,
+          as: 'class',
+          include: [
             {
-              model: AssignmentSubmission,
-              as: 'submissions',
-              where: { userId: user.id },
-              required: false
+              model: User,
+              as: 'instructor',
+              attributes: ['id', 'firstName', 'lastName', 'email']
             }
-          ] : []
-        ]
+          ]
+        }
+      ];
+
+      // Add submissions include only for students
+      if (user.role === 'student') {
+        includeArray.push({
+          model: AssignmentSubmission,
+          as: 'submissions',
+          where: { userId: user.id },
+          required: false
+        });
+      }
+
+      const assignment = await Assignment.findByPk(assignmentId, {
+        include: includeArray
       });
 
       if (!assignment) {

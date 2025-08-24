@@ -62,9 +62,6 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false
     },
-    sampleOutput: {
-      type: DataTypes.TEXT
-    },
     sampleOutputUrl: {
       type: DataTypes.STRING,
       validate: {
@@ -94,33 +91,6 @@ module.exports = (sequelize) => {
       defaultValue: 500,
       allowNull: false
     },
-    starterCode: {
-      type: DataTypes.JSONB,
-      defaultValue: {
-        html: '',
-        css: '',
-        javascript: ''
-      }
-    },
-    hints: {
-      type: DataTypes.TEXT
-    },
-    resources: {
-      type: DataTypes.JSONB,
-      defaultValue: []
-    },
-    submissionTypes: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      defaultValue: ['github', 'code', 'zip'],
-      validate: {
-        isValidSubmissionTypes(value) {
-          const validTypes = ['github', 'code', 'zip'];
-          if (!value.every(type => validTypes.includes(type))) {
-            throw new Error('Invalid submission type');
-          }
-        }
-      }
-    },
     latePenalty: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 10,
@@ -136,14 +106,6 @@ module.exports = (sequelize) => {
     maxLateHours: {
       type: DataTypes.INTEGER,
       defaultValue: 24
-    },
-    requirePayment: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
-    lateFeeAmount: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 500 // ₦500
     },
     metadata: {
       type: DataTypes.JSONB,
