@@ -155,7 +155,9 @@ class ClassesService {
           {
             model: User,
             as: 'instructor',
-            attributes: ['id', 'firstName', 'lastName', 'email']
+            attributes: user.role === 'student' 
+              ? ['id', 'firstName', 'lastName'] // Students can't see instructor email
+              : ['id', 'firstName', 'lastName', 'email']
           },
           {
             model: ClassEnrollment,
@@ -164,7 +166,9 @@ class ClassesService {
               {
                 model: User,
                 as: 'student',
-                attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+                attributes: user.role === 'student' 
+                  ? ['id', 'firstName', 'lastName'] // Students can't see other students' emails
+                  : ['id', 'firstName', 'lastName', 'email', 'role']
               }
             ]
           },
@@ -209,6 +213,22 @@ class ClassesService {
       classWithCounts.isEnrolled = user.role === 'student' ? 
         classData.enrollments.some(e => e.student.id === user.id) : 
         classData.instructorId === user.id;
+
+      // Filter enrollments based on user role
+      if (user.role === 'student') {
+        // Students can only see their own enrollment data
+        classWithCounts.enrollments = classWithCounts.enrollments.filter(
+          enrollment => enrollment.student.id === user.id
+        );
+        
+        // Remove sensitive data from assignments
+        if (classWithCounts.assignments) {
+          classWithCounts.assignments = classWithCounts.assignments.map(assignment => {
+            const { submissionCount, totalStudents, ...filteredAssignment } = assignment;
+            return filteredAssignment;
+          });
+        }
+      }
 
       return classWithCounts;
     } catch (error) {
