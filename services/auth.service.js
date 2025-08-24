@@ -224,8 +224,11 @@ class AuthService {
             }
           };
         } else {
-          // No verification OTP provided, return needsVerification
-          throw new Error('Please verify your email address before logging in.');
+          // No verification OTP provided, return needsVerification flag
+          const error = new Error('Please verify your email address before logging in.');
+          error.needsVerification = true;
+          error.email = user.email;
+          throw error;
         }
       }
 
