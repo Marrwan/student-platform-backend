@@ -18,10 +18,13 @@ router.post('/', authenticateToken, requireAdmin, [
   body('maxScore').optional().isInt({ min: 1, max: 1000 }).withMessage('Max score must be between 1 and 1000'),
   body('startDate').isISO8601().withMessage('Valid start date required'),
   body('deadline').isISO8601().withMessage('Valid deadline required'),
-  body('requirements').trim().isLength({ min: 10 }).withMessage('Requirements must be at least 10 characters'),
-  body('submissionTypes').optional().isArray().withMessage('Submission types must be an array'),
+  body('requirements').optional().trim().isLength({ min: 10 }).withMessage('Requirements must be at least 10 characters'),
+  body('submissionMode').optional().isIn(['code', 'link', 'both']).withMessage('Invalid submission mode'),
   body('latePenalty').optional().isFloat({ min: 0, max: 100 }).withMessage('Late penalty must be between 0 and 100'),
-  body('lateFeeAmount').optional().isFloat({ min: 0 }).withMessage('Late fee must be positive')
+  body('paymentRequired').optional().isBoolean().withMessage('Payment required must be a boolean'),
+  body('paymentAmount').optional().isFloat({ min: 0 }).withMessage('Payment amount must be positive'),
+  body('sampleOutputUrl').optional().isURL().withMessage('Valid sample output URL required'),
+  body('sampleOutputCode').optional().isObject().withMessage('Sample output code must be an object')
 ], assignmentsController.createAssignment);
 
 // Get single assignment details
@@ -37,7 +40,12 @@ router.put('/:id', authenticateToken, requireAdmin, [
   body('startDate').optional().isISO8601().withMessage('Valid start date required'),
   body('deadline').optional().isISO8601().withMessage('Valid deadline required'),
   body('requirements').optional().trim().isLength({ min: 10 }).withMessage('Requirements must be at least 10 characters'),
-  body('latePenalty').optional().isFloat({ min: 0, max: 100 }).withMessage('Late penalty must be between 0 and 100')
+  body('submissionMode').optional().isIn(['code', 'link', 'both']).withMessage('Invalid submission mode'),
+  body('latePenalty').optional().isFloat({ min: 0, max: 100 }).withMessage('Late penalty must be between 0 and 100'),
+  body('paymentRequired').optional().isBoolean().withMessage('Payment required must be a boolean'),
+  body('paymentAmount').optional().isFloat({ min: 0 }).withMessage('Payment amount must be positive'),
+  body('sampleOutputUrl').optional().isURL().withMessage('Valid sample output URL required'),
+  body('sampleOutputCode').optional().isObject().withMessage('Sample output code must be an object')
 ], assignmentsController.updateAssignment);
 
 // Delete assignment (admin only)
@@ -45,7 +53,7 @@ router.delete('/:id', authenticateToken, requireAdmin, assignmentsController.del
 
 // Submit assignment
 router.post('/:id/submit', authenticateToken, requireUser, upload.single('zipFile'), [
-  body('submissionType').isIn(['github', 'code', 'zip']).withMessage('Valid submission type required'),
+  body('submissionType').isIn(['github', 'code', 'zip', 'link']).withMessage('Valid submission type required'),
   body('githubLink').optional().isURL().withMessage('Valid GitHub URL required'),
   body('codeSubmission').optional().isObject().withMessage('Code submission must be an object')
 ], assignmentsController.submitAssignment);

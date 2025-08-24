@@ -60,7 +60,7 @@ module.exports = (sequelize) => {
     },
     requirements: {
       type: DataTypes.TEXT,
-      allowNull: false
+      allowNull: true
     },
     sampleOutputUrl: {
       type: DataTypes.STRING,
