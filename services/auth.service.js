@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { sendEmail } = require('../utils/email');
 
@@ -337,12 +338,10 @@ class AuthService {
         throw new Error('Reset token has expired.');
       }
 
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(password, 12);
-      
       // Update password and clear reset token
+      // The User model's beforeUpdate hook will automatically hash the password
       await user.update({
-        password: hashedPassword,
+        password: password,
         resetPasswordToken: null,
         resetPasswordExpires: null
       });
