@@ -1,0 +1,66 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: js_challenge_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-javascript_challenge}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - js_challenge_network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build: .
+    container_name: js_challenge_backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: javascript_challenge
+      DB_USER: postgres
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - js_challenge_network
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: js_challenge_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+    networks:
+      - js_challenge_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  js_challenge_network:
+    driver: bridge 

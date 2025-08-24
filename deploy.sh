@@ -1,28 +1,60 @@
 #!/bin/bash
 
-echo "🚀 Starting deployment process..."
+# Deployment script for DigitalOcean
+set -e
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm install
+echo "🚀 Starting deployment..."
 
-# Wait for database to be ready
-echo "⏳ Waiting for database to be ready..."
-sleep 10
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo "❌ Docker is not installed. Please install Docker first."
+    exit 1
+fi
 
-# Enable uuid extension first
-echo "🔧 Enabling UUID extension..."
-npx sequelize-cli db:migrate --to 20240101000000-enable-uuid-extension.js || echo "UUID extension migration failed, but continuing..."
+# Check if Docker Compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "❌ Docker Compose is not installed. Please install Docker Compose first."
+    exit 1
+fi
 
-# Run all database migrations
+# Stop existing containers
+echo "🛑 Stopping existing containers..."
+docker-compose down
+
+# Generate .env file if it doesn't exist
+if [ ! -f ".env" ]; then
+    echo "📝 Generating .env file..."
+    ./generate-env.sh
+    echo "⚠️  Please edit .env file with your production values before continuing."
+    echo "   Press Enter when ready to continue..."
+    read
+fi
+
+# Build and start containers
+echo "🔨 Building and starting containers..."
+docker-compose up -d --build
+
+# Wait for services to be ready
+echo "⏳ Waiting for services to be ready..."
+sleep 30
+
+# Run database migrations
 echo "🗄️ Running database migrations..."
-npx sequelize-cli db:migrate || {
-  echo "❌ Migration failed"
-  exit 1
-}
+docker-compose exec backend npx sequelize-cli db:migrate
 
-echo "✅ Database setup completed successfully!"
+# Run database seeders
+echo "🌱 Running database seeders..."
+docker-compose exec backend npx sequelize-cli db:seed:all
 
-# Start the application
-echo "🚀 Starting the application..."
-npm start 
+# Check service health
+echo "🏥 Checking service health..."
+if curl -f http://localhost/health > /dev/null 2>&1; then
+    echo "✅ Health check passed!"
+else
+    echo "❌ Health check failed!"
+    exit 1
+fi
+
+echo "🎉 Deployment completed successfully!"
+echo "📊 API is available at: http://localhost/api"
+echo "🔍 Health check: http://localhost/health" 
