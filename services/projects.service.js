@@ -32,6 +32,7 @@ class ProjectsService {
         offset: parseInt(offset),
         include: user.role === 'student' ? [{
           model: Submission,
+          as: 'submissions',
           where: { userId: user.id },
           required: false
         }] : []
@@ -91,6 +92,7 @@ class ProjectsService {
       const project = await Project.findByPk(projectId, {
         include: user.role === 'student' ? [{
           model: Submission,
+          as: 'submissions',
           where: { userId: user.id },
           required: false
         }] : []
