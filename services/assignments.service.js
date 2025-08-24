@@ -290,26 +290,66 @@ class AssignmentsService {
         await AttendanceScore.destroy({
           where: { 
             classId: assignment.classId,
-            notes: { [sequelize.Op.like]: `%assignment:${assignmentId}%` }
+            notes: { [Op.like]: `%assignment:${assignmentId}%` }
           },
           transaction: t
         });
 
-        // Update leaderboard entries to remove this assignment's contribution
-        await ClassLeaderboard.update(
-          {
-            assignmentScore: sequelize.literal(`GREATEST(assignment_score - (
-              SELECT COALESCE(SUM(score), 0) 
-              FROM "AssignmentSubmissions" 
-              WHERE "assignmentId" = '${assignmentId}' 
-              AND "AssignmentSubmissions"."userId" = "ClassLeaderboards"."userId"
-            ), 0)`)
-          },
-          {
-            where: { classId: assignment.classId },
+        // Get all leaderboard entries for this class and recalculate them
+        const leaderboardEntries = await ClassLeaderboard.findAll({
+          where: { classId: assignment.classId },
+          transaction: t
+        });
+
+        // Recalculate leaderboard scores for each user
+        for (const entry of leaderboardEntries) {
+          // Get user's remaining submissions (excluding the deleted assignment)
+          const remainingSubmissions = await AssignmentSubmission.findAll({
+            where: { 
+              userId: entry.userId,
+              assignmentId: { [Op.ne]: assignmentId }
+            },
             transaction: t
-          }
-        );
+          });
+
+          // Calculate new assignment score
+          const newAssignmentScore = remainingSubmissions.reduce((total, submission) => {
+            return total + (submission.finalScore || submission.score || 0);
+          }, 0);
+
+          // Get attendance scores
+          const attendanceScores = await AttendanceScore.findAll({
+            where: { classId: assignment.classId, userId: entry.userId },
+            transaction: t
+          });
+
+          const attendanceScore = attendanceScores.reduce((total, score) => {
+            return total + score.score;
+          }, 0);
+
+          const totalScore = newAssignmentScore + attendanceScore;
+
+          // Update leaderboard entry
+          await entry.update({
+            assignmentScore: newAssignmentScore,
+            totalScore: totalScore,
+            assignmentsCompleted: remainingSubmissions.length,
+            lastUpdated: new Date()
+          }, { transaction: t });
+        }
+
+        // Update ranks after recalculating scores
+        const updatedLeaderboardEntries = await ClassLeaderboard.findAll({
+          where: { classId: assignment.classId },
+          order: [['totalScore', 'DESC'], ['lastUpdated', 'ASC']],
+          transaction: t
+        });
+
+        for (let i = 0; i < updatedLeaderboardEntries.length; i++) {
+          await updatedLeaderboardEntries[i].update({ 
+            rank: i + 1
+          }, { transaction: t });
+        }
 
         // Finally delete the assignment
         await assignment.destroy({ transaction: t });
