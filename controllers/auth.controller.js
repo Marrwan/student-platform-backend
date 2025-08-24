@@ -41,6 +41,16 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Handle needsVerification case
+      if (error.needsVerification) {
+        return res.status(401).json({ 
+          message: error.message,
+          needsVerification: true,
+          email: error.email
+        });
+      }
+      
       res.status(500).json({ message: error.message });
     }
   }
