@@ -712,17 +712,21 @@ class AssignmentsService {
         attributes: ['id', 'maxScore']
       });
 
-      // Get user's assignment submissions
+      // Get user's assignment submissions with status
       const submissions = await AssignmentSubmission.findAll({
         where: {
           assignmentId: { [Op.in]: assignments.map(a => a.id) },
           userId
         },
-        attributes: ['assignmentId', 'finalScore', 'score']
+        attributes: ['assignmentId', 'finalScore', 'score', 'status']
       });
 
-      // Calculate assignment score
-      const assignmentScore = submissions.reduce((total, submission) => {
+      // Calculate assignment score (only count accepted/reviewed submissions)
+      const validSubmissions = submissions.filter(sub => 
+        sub.status === 'accepted' || sub.status === 'reviewed' || sub.status === 'pending'
+      );
+      
+      const assignmentScore = validSubmissions.reduce((total, submission) => {
         return total + (submission.finalScore || submission.score || 0);
       }, 0);
 
@@ -753,7 +757,8 @@ class AssignmentsService {
           assignmentsCompleted: 0,
           totalAssignments: assignments.length,
           attendanceCount: 0,
-          totalSessions: 0
+          totalSessions: 0,
+          rank: 0
         });
       }
 
@@ -762,7 +767,7 @@ class AssignmentsService {
         totalScore,
         assignmentScore,
         attendanceScore,
-        assignmentsCompleted: submissions.length,
+        assignmentsCompleted: validSubmissions.length,
         totalAssignments: assignments.length,
         attendanceCount: attendanceScores.length,
         lastUpdated: new Date()
@@ -771,9 +776,37 @@ class AssignmentsService {
       // Update ranks for all students in the class
       await this.updateClassRanks(classId);
 
+      console.log(`Updated leaderboard for user ${userId} in class ${classId}: Total=${totalScore}, Assignments=${assignmentScore}, Attendance=${attendanceScore}`);
+
       return leaderboardEntry;
     } catch (error) {
       console.error('Error updating class leaderboard:', error);
+      throw error;
+    }
+  }
+
+  // Refresh all leaderboards for a class (admin only)
+  async refreshClassLeaderboard(classId) {
+    try {
+      // Get all enrolled students
+      const enrollments = await ClassEnrollment.findAll({
+        where: { classId },
+        include: [{ model: User, as: 'user', attributes: ['id'] }]
+      });
+
+      console.log(`Refreshing leaderboard for ${enrollments.length} students in class ${classId}`);
+
+      // Update leaderboard for each student
+      for (const enrollment of enrollments) {
+        await this.updateClassLeaderboard(classId, enrollment.user.id);
+      }
+
+      return {
+        message: `Leaderboard refreshed for ${enrollments.length} students`,
+        studentCount: enrollments.length
+      };
+    } catch (error) {
+      console.error('Error refreshing class leaderboard:', error);
       throw error;
     }
   }
@@ -783,12 +816,21 @@ class AssignmentsService {
     try {
       const leaderboardEntries = await ClassLeaderboard.findAll({
         where: { classId },
-        order: [['totalScore', 'DESC']]
+        order: [['totalScore', 'DESC'], ['lastUpdated', 'ASC']] // Secondary sort by last updated for tie-breaking
       });
 
-      for (let i = 0; i < leaderboardEntries.length; i++) {
-        await leaderboardEntries[i].update({ rank: i + 1 });
-      }
+      // Update ranks in a single transaction for better performance
+      const { sequelize } = require('../models');
+      await sequelize.transaction(async (t) => {
+        for (let i = 0; i < leaderboardEntries.length; i++) {
+          await leaderboardEntries[i].update({ 
+            rank: i + 1,
+            lastUpdated: new Date()
+          }, { transaction: t });
+        }
+      });
+
+      console.log(`Updated ranks for ${leaderboardEntries.length} students in class ${classId}`);
     } catch (error) {
       console.error('Error updating class ranks:', error);
       throw error;

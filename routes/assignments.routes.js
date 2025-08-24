@@ -82,7 +82,7 @@ router.put('/:id/submissions/:submissionId/review', authenticateToken, requireAd
 router.post('/:id/unlock', authenticateToken, requireAdmin, assignmentsController.unlockAssignment);
 
 // Award attendance score (admin only)
-router.post('/:id/attendance', authenticateToken, requireAdmin, [
+router.post('/:classId/attendance', authenticateToken, requireAdmin, [
   body('userId').isUUID().withMessage('Valid user ID required'),
   body('score').isFloat({ min: 0, max: 100 }).withMessage('Score must be between 0 and 100'),
   body('notes').optional().trim().isLength({ max: 1000 }).withMessage('Notes too long')
@@ -90,6 +90,9 @@ router.post('/:id/attendance', authenticateToken, requireAdmin, [
 
 // Get class leaderboard
 router.get('/:id/leaderboard', authenticateToken, assignmentsController.getClassLeaderboard);
+
+// Refresh class leaderboard (admin only)
+router.post('/:classId/leaderboard/refresh', authenticateToken, requireAdmin, assignmentsController.refreshClassLeaderboard);
 
 // Check user block status
 router.get('/user/block-status', authenticateToken, assignmentsController.checkUserBlockStatus);

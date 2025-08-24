@@ -147,7 +147,7 @@ class AssignmentsController {
 
       const { userId, score, notes } = req.body;
       const result = await assignmentsService.awardAttendanceScore(
-        req.params.id, 
+        req.params.classId, 
         userId, 
         score, 
         notes, 
@@ -167,6 +167,17 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getClassLeaderboard controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Refresh class leaderboard (admin only)
+  async refreshClassLeaderboard(req, res) {
+    try {
+      const result = await assignmentsService.refreshClassLeaderboard(req.params.classId);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in refreshClassLeaderboard controller:', error);
       res.status(500).json({ message: error.message });
     }
   }
