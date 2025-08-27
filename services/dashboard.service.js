@@ -5,6 +5,15 @@ class DashboardService {
   // Get today's project (now shows assignments from enrolled classes)
   async getTodayProject(userId) {
     try {
+      // First check if user exists
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return { 
+          project: null, 
+          message: "User not found. Please log in again."
+        };
+      }
+
       // Get student's enrolled classes
       const enrollments = await ClassEnrollment.findAll({
         where: { userId },
