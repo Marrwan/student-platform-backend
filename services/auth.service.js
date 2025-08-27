@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { sendEmail } = require('../utils/email');
+const { sequelize } = require('../models'); // Added sequelize import
 
 class AuthService {
   // Register user
@@ -10,8 +11,11 @@ class AuthService {
     try {
       const { email, password, firstName, lastName } = userData;
 
+      // Normalize email (trim whitespace and convert to lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+
       // Check if user already exists
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await User.findOne({ where: { email: normalizedEmail } });
       if (existingUser) {
         throw new Error('User with this email already exists.');
       }
@@ -22,7 +26,7 @@ class AuthService {
 
       // Create user
       const user = await User.create({
-        email,
+        email: normalizedEmail,
         password,
         firstName,
         lastName,
@@ -35,7 +39,7 @@ class AuthService {
 
       // Send verification email with OTP
       await sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: 'Email Verification - JavaScript Learning Platform',
         html: `
           <h2>Welcome to JavaScript Learning Platform!</h2>
@@ -124,13 +128,35 @@ class AuthService {
         throw new Error('Email is required.');
       }
 
-      const user = await User.findOne({ where: { email } });
+      // Check database connection
+      try {
+        await sequelize.authenticate();
+      } catch (dbError) {
+        console.error('Database connection error:', dbError);
+        throw new Error('Service temporarily unavailable. Please try again in a few minutes.');
+      }
+
+      // Normalize email (trim whitespace and convert to lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const user = await User.findOne({ 
+        where: { 
+          email: normalizedEmail 
+        } 
+      });
+      
       if (!user) {
-        throw new Error('User not found.');
+        // For security reasons, don't reveal if user exists or not
+        console.log(`Resend verification requested for non-existent email: ${normalizedEmail}`);
+        return { 
+          message: 'If an account with that email exists and is not verified, a verification code has been sent.' 
+        };
       }
 
       if (user.emailVerified) {
-        throw new Error('Email is already verified.');
+        return { 
+          message: 'This email is already verified. You can now log in to your account.' 
+        };
       }
 
       // Check if user has a recent OTP that hasn't expired yet
@@ -152,7 +178,7 @@ class AuthService {
 
       // Send verification email with OTP
       await sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: 'Email Verification Code - JavaScript Learning Platform',
         html: `
           <h2>Email Verification Code</h2>
@@ -168,9 +194,7 @@ class AuthService {
       });
 
       return { 
-        success: true,
-        message: 'Verification code sent successfully.',
-        expiresIn: 10 * 60 // 10 minutes in seconds
+        message: 'Verification code sent successfully! Please check your email for the 6-digit code.' 
       };
     } catch (error) {
       console.error('Resend verification error:', error);
@@ -183,8 +207,19 @@ class AuthService {
     try {
       const { email, password, verificationOtp } = loginData;
 
+      // Check database connection
+      try {
+        await sequelize.authenticate();
+      } catch (dbError) {
+        console.error('Database connection error:', dbError);
+        throw new Error('Service temporarily unavailable. Please try again in a few minutes.');
+      }
+
+      // Normalize email (trim whitespace and convert to lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+
       // Find user by email
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({ where: { email: normalizedEmail } });
       if (!user) {
         throw new Error('Invalid credentials.');
       }
