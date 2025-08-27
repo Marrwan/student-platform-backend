@@ -212,6 +212,24 @@ class ClassesService {
         classData.enrollments.some(e => e.student.id === user.id) : 
         classData.instructorId === user.id;
 
+      // Add model methods to assignments
+      if (classWithCounts.assignments) {
+        classWithCounts.assignments = classWithCounts.assignments.map(assignment => {
+          const assignmentInstance = classData.assignments.find(a => a.id === assignment.id);
+          if (assignmentInstance) {
+            return {
+              ...assignment,
+              isOverdue: assignmentInstance.isOverdue(),
+              timeRemaining: assignmentInstance.getTimeRemaining(),
+              canSubmit: assignmentInstance.canSubmit(),
+              getStatus: assignmentInstance.getStatus(),
+              isAvailable: assignmentInstance.isAvailable()
+            };
+          }
+          return assignment;
+        });
+      }
+
       // Filter enrollments based on user role
       if (user.role === 'student') {
         // Students can see all students but only their own progress data

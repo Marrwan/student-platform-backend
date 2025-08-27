@@ -57,12 +57,28 @@ class AssignmentsService {
           const assignmentData = assignment.toJSON();
           const submission = assignment.submissions?.[0];
           
-          assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
-          assignmentData.submissionScore = submission ? submission.score : null;
+          // Add model methods to the response
           assignmentData.isOverdue = assignment.isOverdue();
           assignmentData.timeRemaining = assignment.getTimeRemaining();
           assignmentData.canSubmit = assignment.canSubmit();
+          assignmentData.getStatus = assignment.getStatus();
+          assignmentData.isAvailable = assignment.isAvailable();
           
+          assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
+          assignmentData.submissionScore = submission ? submission.score : null;
+          assignmentData.hasSubmission = !!submission;
+          
+          return assignmentData;
+        });
+      } else {
+        // For admins, also add the model methods
+        assignments.rows = assignments.rows.map(assignment => {
+          const assignmentData = assignment.toJSON();
+          assignmentData.isOverdue = assignment.isOverdue();
+          assignmentData.timeRemaining = assignment.getTimeRemaining();
+          assignmentData.canSubmit = assignment.canSubmit();
+          assignmentData.getStatus = assignment.getStatus();
+          assignmentData.isAvailable = assignment.isAvailable();
           return assignmentData;
         });
       }
@@ -214,11 +230,16 @@ class AssignmentsService {
         const assignmentData = assignment.toJSON();
         const submission = assignment.submissions?.[0];
         
-        assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
-        assignmentData.submissionScore = submission ? submission.score : null;
+        // Add model methods to the response
         assignmentData.isOverdue = assignment.isOverdue();
         assignmentData.timeRemaining = assignment.getTimeRemaining();
         assignmentData.canSubmit = assignment.canSubmit();
+        assignmentData.getStatus = assignment.getStatus();
+        assignmentData.isAvailable = assignment.isAvailable();
+        
+        assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
+        assignmentData.submissionScore = submission ? submission.score : null;
+        assignmentData.hasSubmission = !!submission;
         
         return assignmentData;
       } else {
@@ -227,6 +248,8 @@ class AssignmentsService {
         assignmentData.isOverdue = assignment.isOverdue();
         assignmentData.timeRemaining = assignment.getTimeRemaining();
         assignmentData.canSubmit = assignment.canSubmit();
+        assignmentData.getStatus = assignment.getStatus();
+        assignmentData.isAvailable = assignment.isAvailable();
         
         return assignmentData;
       }
