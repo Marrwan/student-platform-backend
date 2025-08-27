@@ -3,8 +3,8 @@ services:
     name: javascript-challenge-api
     runtime: node
     plan: starter
-    buildCommand: npm install
-    startCommand: chmod +x start.sh && ./start.sh
+    buildCommand: npm install && npx sequelize-cli db:migrate
+    startCommand: chmod +x start-render.sh && ./start-render.sh
     envVars:
       - key: NODE_ENV
         value: production
@@ -34,6 +34,10 @@ services:
         value: 500
       - key: CURRENCY
         value: NGN
+      - key: DISABLE_EMAILS
+        value: "true"
+      - key: FRONTEND_URL
+        value: "https://your-frontend-url.onrender.com"
 
 databases:
   - name: javascript-challenge-db
