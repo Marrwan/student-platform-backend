@@ -173,7 +173,7 @@ class ClassesService {
           {
             model: Assignment,
             as: 'assignments',
-            where: user.role === 'student' ? { isUnlocked: true } : {},
+            where: {}, // Show all assignments for everyone
             required: false,
             order: [['startDate', 'ASC']]
           },

@@ -39,7 +39,6 @@ class DashboardService {
         where: {
           classId: { [Op.in]: classIds },
           isUnlocked: true,
-          isActive: true,
           deadline: { [Op.gt]: now } // Not due yet
         },
         include: [{
@@ -55,8 +54,7 @@ class DashboardService {
         const anyAssignment = await Assignment.findOne({
           where: {
             classId: { [Op.in]: classIds },
-            isUnlocked: true,
-            isActive: true
+            isUnlocked: true
           },
           include: [{
             model: Class,
@@ -179,8 +177,7 @@ class DashboardService {
       const totalAssignments = await Assignment.count({
         where: {
           classId: { [Op.in]: classIds },
-          isUnlocked: true,
-          isActive: true
+          isUnlocked: true
         }
       });
 
@@ -237,7 +234,6 @@ class DashboardService {
         where: {
           classId: { [Op.in]: classIds },
           isUnlocked: true,
-          isActive: true,
           deadline: { [Op.lt]: now }
         },
         include: [{

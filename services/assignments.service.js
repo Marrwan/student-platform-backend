@@ -15,7 +15,7 @@ class AssignmentsService {
       if (classId) whereClause.classId = classId;
 
       if (user.role === 'student') {
-        // Students see only assignments from their enrolled classes
+        // Students see only assignments from their enrolled classes and only unlocked ones
         const enrollments = await ClassEnrollment.findAll({
           where: { userId: user.id },
           attributes: ['classId']
@@ -23,6 +23,7 @@ class AssignmentsService {
         
         const classIds = enrollments.map(e => e.classId);
         whereClause.classId = { [Op.in]: classIds };
+        whereClause.isUnlocked = true; // Students can only see unlocked assignments
       }
 
       const includeArray = [

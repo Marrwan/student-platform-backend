@@ -438,7 +438,11 @@ class AdminService {
   // Create assignment
   async createAssignment(assignmentData) {
     try {
-      const assignment = await Assignment.create(assignmentData);
+      const assignment = await Assignment.create({
+        ...assignmentData,
+        isUnlocked: true, // Automatically unlock assignments when created
+        isActive: true
+      });
       return { message: 'Assignment created successfully', assignment };
     } catch (err) {
       console.error('Error creating assignment:', err);
