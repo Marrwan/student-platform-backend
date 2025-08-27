@@ -39,12 +39,45 @@ app.use(helmet({
 }));
 
 app.use(cors({
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'https://strangedevclass.netlify.app',
+      'https://student-platform-frontend.onrender.com',
+      'https://*.netlify.app',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+
+    // Allow non-browser requests or same-origin (no origin header)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length']
+}));
+
+// Explicitly handle preflight requests
+app.options('*', cors({
   origin: [
-    'http://localhost:3000', // Development
-    'https://your-frontend-app.vercel.app', // Production - Update this
-    process.env.FRONTEND_URL // Environment variable
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'https://strangedevclass.netlify.app',
+    'https://student-platform-frontend.onrender.com',
+    'https://*.netlify.app',
+    process.env.FRONTEND_URL
   ].filter(Boolean),
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Compression middleware
