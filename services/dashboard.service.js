@@ -191,22 +191,8 @@ class DashboardService {
         }]
       });
 
-      // Get average score
-      const averageScoreResult = await AssignmentSubmission.findOne({
-        attributes: [[sequelize.fn('AVG', sequelize.col('score')), 'average']],
-        where: { userId, status: 'accepted' },
-        include: [{
-          model: Assignment,
-          as: 'assignment',
-          where: {
-            classId: { [Op.in]: classIds }
-          },
-          required: true
-        }]
-      });
-
-      // Get total score
-      const totalScore = await AssignmentSubmission.sum('score', { 
+      // Get average score - calculate manually to avoid SQL issues
+      const acceptedSubmissions = await AssignmentSubmission.findAll({
         where: { 
           userId, 
           status: 'accepted' 
@@ -217,9 +203,18 @@ class DashboardService {
           where: {
             classId: { [Op.in]: classIds }
           },
-          required: true
-        }]
+          required: true,
+          attributes: []
+        }],
+        attributes: ['score']
       });
+
+      const averageScore = acceptedSubmissions.length > 0 
+        ? acceptedSubmissions.reduce((sum, sub) => sum + (sub.score || 0), 0) / acceptedSubmissions.length
+        : 0;
+
+      // Get total score - calculate manually to avoid SQL issues
+      const totalScore = acceptedSubmissions.reduce((sum, sub) => sum + (sub.score || 0), 0);
 
       // Get total students
       const totalStudents = await User.count({ where: { role: 'student' } });
@@ -256,7 +251,7 @@ class DashboardService {
           completedProjects: completedAssignments,
           missedProjects: missedAssignments,
           pendingProjects: pendingAssignments,
-          averageScore: averageScoreResult ? parseFloat(averageScoreResult.getDataValue('average')) : 0,
+          averageScore: Math.round(averageScore * 100) / 100, // Round to 2 decimal places
           currentStreak,
           totalScore: totalScore || 0,
           rank,
