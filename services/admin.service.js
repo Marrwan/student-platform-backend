@@ -450,6 +450,22 @@ class AdminService {
     }
   }
 
+  // Update assignment
+  async updateAssignment(assignmentId, updateData) {
+    try {
+      const assignment = await Assignment.findByPk(assignmentId);
+      if (!assignment) {
+        throw new Error('Assignment not found');
+      }
+      
+      await assignment.update(updateData);
+      return { message: 'Assignment updated successfully', assignment };
+    } catch (err) {
+      console.error('Error updating assignment:', err);
+      throw new Error('Failed to update assignment');
+    }
+  }
+
   // Get admin classes
   async getClasses(params = {}) {
     try {

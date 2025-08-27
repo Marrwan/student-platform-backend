@@ -156,6 +156,29 @@ module.exports = (sequelize) => {
     return now <= this.deadline;
   };
 
+  Assignment.prototype.isAvailable = function() {
+    if (!this.isUnlocked) return false;
+    if (!this.isActive) return false;
+    
+    const now = new Date();
+    const startDate = new Date(this.startDate);
+    
+    return now >= startDate;
+  };
+
+  Assignment.prototype.getStatus = function() {
+    if (!this.isUnlocked) return 'locked';
+    if (!this.isActive) return 'inactive';
+    
+    const now = new Date();
+    const startDate = new Date(this.startDate);
+    const deadline = new Date(this.deadline);
+    
+    if (now < startDate) return 'not_started';
+    if (now > deadline) return 'overdue';
+    return 'active';
+  };
+
   Assignment.prototype.calculateLatePenalty = function(submittedAt) {
     if (!this.allowLateSubmission || submittedAt <= this.deadline) return 0;
     

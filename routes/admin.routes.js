@@ -53,6 +53,7 @@ router.get('/users/:id', adminController.getUserDetails);
 // Admin assignments routes
 router.get('/assignments', adminController.getAssignments);
 router.post('/assignments', adminController.createAssignment);
+router.put('/assignments/:id', adminController.updateAssignment);
 
 // Admin classes routes
 router.get('/classes', adminController.getClasses);

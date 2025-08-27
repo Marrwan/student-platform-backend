@@ -173,6 +173,17 @@ class AdminController {
     }
   }
 
+  // Update assignment
+  async updateAssignment(req, res) {
+    try {
+      const assignment = await adminService.updateAssignment(req.params.id, req.body);
+      res.json(assignment);
+    } catch (error) {
+      console.error('Error in updateAssignment controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
   // Get admin classes
   async getClasses(req, res) {
     try {
