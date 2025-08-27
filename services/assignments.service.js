@@ -128,7 +128,9 @@ class AssignmentsService {
         allowLateSubmission,
         maxLateHours,
         paymentRequired,
-        paymentAmount
+        paymentAmount,
+        isUnlocked: true, // Automatically unlock assignments when created
+        isActive: true
       });
 
       // Send notification emails to enrolled students
