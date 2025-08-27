@@ -30,8 +30,8 @@ router.post('/', authenticateToken, requireAdmin, [
 // Get single assignment details
 router.get('/:id', authenticateToken, assignmentsController.getAssignmentById);
 
-// Update assignment (admin only)
-router.put('/:id', authenticateToken, requireAdmin, [
+// Update assignment (admin or class instructor)
+router.put('/:id', authenticateToken, [
   body('title').optional().trim().isLength({ min: 3, max: 200 }).withMessage('Title must be between 3 and 200 characters'),
   body('description').optional().trim().isLength({ min: 10 }).withMessage('Description must be at least 10 characters'),
   body('type').optional().isIn(['html', 'css', 'javascript', 'fullstack', 'other']).withMessage('Invalid assignment type'),
