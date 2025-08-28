@@ -32,11 +32,26 @@ class AssignmentsController {
   // Get single assignment details
   async getAssignmentById(req, res) {
     try {
-      const assignment = await assignmentsService.getAssignmentById(req.params.id, req.user);
-      res.json(assignment);
+      const result = await assignmentsService.getAssignmentById(req.params.id, req.user.id, req.user.role);
+      res.json(result);
     } catch (error) {
       console.error('Error in getAssignmentById controller:', error);
       res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Get current user's submission for this assignment
+  async getMySubmission(req, res) {
+    try {
+      const result = await assignmentsService.getMySubmission(req.params.id, req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getMySubmission controller:', error);
+      if (error.message === 'Submission not found') {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: error.message });
+      }
     }
   }
 

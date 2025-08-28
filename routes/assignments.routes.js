@@ -30,6 +30,9 @@ router.post('/', authenticateToken, requireAdmin, [
 // Get single assignment details
 router.get('/:id', authenticateToken, assignmentsController.getAssignmentById);
 
+// Get current user's submission for this assignment
+router.get('/:id/my-submission', authenticateToken, requireUser, assignmentsController.getMySubmission);
+
 // Update assignment (admin or class instructor)
 router.put('/:id', authenticateToken, [
   body('title').optional().trim().isLength({ min: 3, max: 200 }).withMessage('Title must be between 3 and 200 characters'),

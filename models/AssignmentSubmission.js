@@ -24,7 +24,7 @@ module.exports = (sequelize) => {
       }
     },
     submissionType: {
-      type: DataTypes.ENUM('github', 'code', 'zip'),
+      type: DataTypes.ENUM('github', 'code', 'zip', 'link'),
       allowNull: false
     },
     githubLink: {

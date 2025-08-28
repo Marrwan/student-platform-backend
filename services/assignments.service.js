@@ -180,35 +180,21 @@ class AssignmentsService {
     }
   }
 
-  // Get single assignment details
-  async getAssignmentById(assignmentId, user) {
+  // Get assignment by ID
+  async getAssignmentById(assignmentId, userId, userRole) {
     try {
-      const includeArray = [
-        {
-          model: Class,
-          as: 'class',
-          include: [
-            {
+      const assignment = await Assignment.findByPk(assignmentId, {
+        include: [
+          { 
+            model: Class, 
+            as: 'class',
+            include: [{
               model: User,
               as: 'instructor',
               attributes: ['id', 'firstName', 'lastName', 'email']
-            }
-          ]
-        }
-      ];
-
-      // Add submissions include only for students
-      if (user.role === 'student') {
-        includeArray.push({
-          model: AssignmentSubmission,
-          as: 'submissions',
-          where: { userId: user.id },
-          required: false
-        });
-      }
-
-      const assignment = await Assignment.findByPk(assignmentId, {
-        include: includeArray
+            }]
+          }
+        ]
       });
 
       if (!assignment) {
@@ -216,44 +202,44 @@ class AssignmentsService {
       }
 
       // Check if user has access to this assignment
-      if (user.role === 'student') {
+      if (userRole === 'student') {
         const enrollment = await ClassEnrollment.findOne({
-          where: { classId: assignment.classId, userId: user.id }
+          where: { classId: assignment.classId, userId }
         });
-        
+
         if (!enrollment) {
           throw new Error('Access denied');
         }
-
-        // Add submission info for students
-        const assignmentData = assignment.toJSON();
-        const submission = assignment.submissions?.[0];
-        
-        // Add model methods to the response
-        assignmentData.isOverdue = assignment.isOverdue();
-        assignmentData.timeRemaining = assignment.getTimeRemaining();
-        assignmentData.canSubmit = assignment.canSubmit();
-        assignmentData.getStatus = assignment.getStatus();
-        assignmentData.isAvailable = assignment.isAvailable();
-        
-        assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
-        assignmentData.submissionScore = submission ? submission.score : null;
-        assignmentData.hasSubmission = !!submission;
-        
-        return assignmentData;
-      } else {
-        // Admin users can access any assignment
-        const assignmentData = assignment.toJSON();
-        assignmentData.isOverdue = assignment.isOverdue();
-        assignmentData.timeRemaining = assignment.getTimeRemaining();
-        assignmentData.canSubmit = assignment.canSubmit();
-        assignmentData.getStatus = assignment.getStatus();
-        assignmentData.isAvailable = assignment.isAvailable();
-        
-        return assignmentData;
       }
+
+      return assignment;
     } catch (error) {
       console.error('Error fetching assignment:', error);
+      throw error;
+    }
+  }
+
+  // Get current user's submission for this assignment
+  async getMySubmission(assignmentId, userId) {
+    try {
+      const submission = await AssignmentSubmission.findOne({
+        where: { assignmentId, userId },
+        include: [
+          {
+            model: Assignment,
+            as: 'assignment',
+            include: [{ model: Class, as: 'class' }]
+          }
+        ]
+      });
+
+      if (!submission) {
+        throw new Error('Submission not found');
+      }
+
+      return { submission };
+    } catch (error) {
+      console.error('Error fetching my submission:', error);
       throw error;
     }
   }
