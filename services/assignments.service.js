@@ -392,6 +392,16 @@ class AssignmentsService {
     try {
       let { submissionType, githubLink, codeSubmission, submissionLink } = submissionData;
 
+      // Debug logging
+      console.log('Submission data received:', {
+        submissionType,
+        githubLink,
+        submissionLink,
+        hasCodeSubmission: !!codeSubmission,
+        hasFile: !!file,
+        fileOriginalName: file?.originalname
+      });
+
       // Parse codeSubmission if it's a JSON string (from FormData)
       if (codeSubmission && typeof codeSubmission === 'string') {
         try {
@@ -402,7 +412,15 @@ class AssignmentsService {
       }
 
       const assignment = await Assignment.findByPk(assignmentId, {
-        include: [{ model: Class, as: 'class' }]
+        include: [{ 
+          model: Class, 
+          as: 'class',
+          include: [{
+            model: User,
+            as: 'instructor',
+            attributes: ['id', 'firstName', 'lastName', 'email']
+          }]
+        }]
       });
 
       if (!assignment) {
@@ -506,21 +524,28 @@ class AssignmentsService {
       // Update leaderboard
       await this.updateClassLeaderboard(assignment.classId, user.id);
 
-      // Send notification email to instructor
-      await sendEmail({
-        to: assignment.class.instructor.email,
-        subject: `New Assignment Submission: ${assignment.title}`,
-        html: `
-          <h2>New Assignment Submission</h2>
-          <p><strong>Student:</strong> ${user.firstName} ${user.lastName} (${user.email})</p>
-          <p><strong>Assignment:</strong> ${assignment.title}</p>
-          <p><strong>Class:</strong> ${assignment.class.name}</p>
-          <p><strong>Submission Type:</strong> ${submissionType}</p>
-          <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
-          ${isLate ? `<p><strong>Status:</strong> Late submission (${submission.latePenalty} point penalty)</p>` : ''}
-          ${submission.isBlocked ? `<p><strong>Payment Required:</strong> ₦${assignment.paymentAmount} to regain access</p>` : ''}
-        `
-      });
+      // Send notification email to instructor (with error handling)
+      try {
+        if (assignment.class.instructor && assignment.class.instructor.email) {
+          await sendEmail({
+            to: assignment.class.instructor.email,
+            subject: `New Assignment Submission: ${assignment.title}`,
+            html: `
+              <h2>New Assignment Submission</h2>
+              <p><strong>Student:</strong> ${user.firstName} ${user.lastName} (${user.email})</p>
+              <p><strong>Assignment:</strong> ${assignment.title}</p>
+              <p><strong>Class:</strong> ${assignment.class.name}</p>
+              <p><strong>Submission Type:</strong> ${submissionType}</p>
+              <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+              ${isLate ? `<p><strong>Status:</strong> Late submission (${submission.latePenalty} point penalty)</p>` : ''}
+              ${submission.isBlocked ? `<p><strong>Payment Required:</strong> ₦${assignment.paymentAmount} to regain access</p>` : ''}
+            `
+          });
+        }
+      } catch (emailError) {
+        console.error('Error sending notification email:', emailError);
+        // Don't fail the submission if email fails
+      }
 
       return {
         message: 'Assignment submitted successfully',
