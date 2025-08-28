@@ -55,7 +55,26 @@ router.delete('/:id', authenticateToken, requireAdmin, assignmentsController.del
 router.post('/:id/submit', authenticateToken, requireUser, upload.single('zipFile'), [
   body('submissionType').isIn(['github', 'code', 'zip', 'link']).withMessage('Valid submission type required'),
   body('githubLink').optional().isURL().withMessage('Valid GitHub URL required'),
-  body('codeSubmission').optional().isObject().withMessage('Code submission must be an object')
+  body('submissionLink').optional().isURL().withMessage('Valid submission link URL required'),
+  body('codeSubmission').optional().custom((value, { req }) => {
+    if (value) {
+      try {
+        // If it's a string, try to parse it as JSON
+        if (typeof value === 'string') {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'object' && parsed !== null) {
+            return true;
+          }
+        } else if (typeof value === 'object' && value !== null) {
+          return true;
+        }
+        throw new Error('Code submission must be a valid object');
+      } catch (error) {
+        throw new Error('Code submission must be a valid JSON object');
+      }
+    }
+    return true;
+  }).withMessage('Code submission must be a valid object')
 ], assignmentsController.submitAssignment);
 
 // Get assignment submissions (admin only)

@@ -390,7 +390,16 @@ class AssignmentsService {
   // Submit assignment
   async submitAssignment(assignmentId, submissionData, user, file) {
     try {
-      const { submissionType, githubLink, codeSubmission, submissionLink } = submissionData;
+      let { submissionType, githubLink, codeSubmission, submissionLink } = submissionData;
+
+      // Parse codeSubmission if it's a JSON string (from FormData)
+      if (codeSubmission && typeof codeSubmission === 'string') {
+        try {
+          codeSubmission = JSON.parse(codeSubmission);
+        } catch (error) {
+          throw new Error('Invalid code submission format');
+        }
+      }
 
       const assignment = await Assignment.findByPk(assignmentId, {
         include: [{ model: Class, as: 'class' }]
