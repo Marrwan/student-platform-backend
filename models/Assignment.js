@@ -139,35 +139,31 @@ module.exports = (sequelize) => {
   };
 
   Assignment.prototype.canSubmit = function() {
-    if (!this.isUnlocked) return false;
     if (!this.isActive) return false;
     
     const now = new Date();
     const startDate = new Date(this.startDate);
     
+    // Cannot submit before start time
     if (now < startDate) return false;
     
+    // If late submissions are allowed, can submit anytime after start
     if (this.allowLateSubmission) {
-      const maxLateTime = new Date(this.deadline);
-      maxLateTime.setHours(maxLateTime.getHours() + this.maxLateHours);
-      return now <= maxLateTime;
+      return true;
     }
     
+    // If late submissions are not allowed, can only submit before deadline
     return now <= this.deadline;
   };
 
   Assignment.prototype.isAvailable = function() {
-    if (!this.isUnlocked) return false;
     if (!this.isActive) return false;
     
-    const now = new Date();
-    const startDate = new Date(this.startDate);
-    
-    return now >= startDate;
+    // Students can access assignment details at any time
+    return true;
   };
 
   Assignment.prototype.getStatus = function() {
-    if (!this.isUnlocked) return 'locked';
     if (!this.isActive) return 'inactive';
     
     const now = new Date();

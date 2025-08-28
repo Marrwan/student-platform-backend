@@ -11,11 +11,10 @@ class AssignmentsService {
 
       const whereClause = {};
       if (status === 'active') whereClause.isActive = true;
-      if (status === 'unlocked') whereClause.isUnlocked = true;
       if (classId) whereClause.classId = classId;
 
       if (user.role === 'student') {
-        // Students see only assignments from their enrolled classes and only unlocked ones
+        // Students see ALL assignments from their enrolled classes (not just unlocked ones)
         const enrollments = await ClassEnrollment.findAll({
           where: { userId: user.id },
           attributes: ['classId']
@@ -23,7 +22,7 @@ class AssignmentsService {
         
         const classIds = enrollments.map(e => e.classId);
         whereClause.classId = { [Op.in]: classIds };
-        whereClause.isUnlocked = true; // Students can only see unlocked assignments
+        // Remove the isUnlocked filter - students can see all assignments
       }
 
       const includeArray = [
@@ -412,7 +411,16 @@ class AssignmentsService {
 
       // Check if assignment is unlocked and can be submitted
       if (!assignment.canSubmit()) {
-        throw new Error('Assignment is not available for submission');
+        const now = new Date();
+        const startDate = new Date(assignment.startDate);
+        
+        if (now < startDate) {
+          throw new Error('Assignment has not started yet. Start time: ' + startDate.toLocaleString());
+        } else if (now > assignment.deadline && !assignment.allowLateSubmission) {
+          throw new Error('Assignment deadline has passed and late submissions are not allowed');
+        } else {
+          throw new Error('Assignment is not available for submission at this time');
+        }
       }
 
       // Check if user has already submitted

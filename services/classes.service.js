@@ -493,7 +493,7 @@ class ClassesService {
 
       const whereClause = { classId };
       if (status === 'active') whereClause.isActive = true;
-      if (status === 'unlocked') whereClause.isUnlocked = true;
+      // Remove the isUnlocked filter - students can see all assignments
 
       const assignments = await Assignment.findAndCountAll({
         where: whereClause,

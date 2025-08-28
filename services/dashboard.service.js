@@ -38,7 +38,6 @@ class DashboardService {
       const urgentAssignment = await Assignment.findOne({
         where: {
           classId: { [Op.in]: classIds },
-          isUnlocked: true,
           deadline: { [Op.gt]: now } // Not due yet
         },
         include: [{
@@ -53,8 +52,7 @@ class DashboardService {
         // Check if there are any assignments at all (even if due)
         const anyAssignment = await Assignment.findOne({
           where: {
-            classId: { [Op.in]: classIds },
-            isUnlocked: true
+            classId: { [Op.in]: classIds }
           },
           include: [{
             model: Class,
@@ -176,8 +174,7 @@ class DashboardService {
       // Get assignments from enrolled classes
       const totalAssignments = await Assignment.count({
         where: {
-          classId: { [Op.in]: classIds },
-          isUnlocked: true
+          classId: { [Op.in]: classIds }
         }
       });
 
@@ -233,7 +230,6 @@ class DashboardService {
       const missedAssignments = await Assignment.count({
         where: {
           classId: { [Op.in]: classIds },
-          isUnlocked: true,
           deadline: { [Op.lt]: now }
         },
         include: [{
