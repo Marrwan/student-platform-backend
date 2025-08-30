@@ -57,8 +57,24 @@ router.delete('/:id', authenticateToken, requireAdmin, assignmentsController.del
 // Submit assignment
 router.post('/:id/submit', authenticateToken, requireUser, upload.single('zipFile'), [
   body('submissionType').isIn(['github', 'code', 'zip', 'link']).withMessage('Valid submission type required'),
-  body('githubLink').optional().isURL().withMessage('Valid GitHub URL required'),
-  body('submissionLink').optional().isURL().withMessage('Valid submission link URL required'),
+  body('githubLink').optional().custom((value, { req }) => {
+    // Only validate if submissionType is 'github' and value is provided
+    if (req.body.submissionType === 'github' && value) {
+      if (!value.match(/^https?:\/\/github\.com\/.+/)) {
+        throw new Error('Valid GitHub URL required');
+      }
+    }
+    return true;
+  }),
+  body('submissionLink').optional().custom((value, { req }) => {
+    // Only validate if submissionType is 'link' and value is provided
+    if (req.body.submissionType === 'link' && value) {
+      if (!value.match(/^https?:\/\//)) {
+        throw new Error('Valid submission link URL required');
+      }
+    }
+    return true;
+  }),
   body('codeSubmission').optional().custom((value, { req }) => {
     if (value) {
       try {
@@ -132,8 +148,24 @@ router.put('/:id/submission', [
   authenticateToken,
   requireUser,
   body('submissionType').optional().isIn(['github', 'code', 'link', 'zip']).withMessage('Invalid submission type'),
-  body('githubLink').optional().isURL().withMessage('Valid GitHub URL required'),
-  body('submissionLink').optional().isURL().withMessage('Valid submission link URL required'),
+  body('githubLink').optional().custom((value, { req }) => {
+    // Only validate if submissionType is 'github' and value is provided
+    if (req.body.submissionType === 'github' && value) {
+      if (!value.match(/^https?:\/\/github\.com\/.+/)) {
+        throw new Error('Valid GitHub URL required');
+      }
+    }
+    return true;
+  }),
+  body('submissionLink').optional().custom((value, { req }) => {
+    // Only validate if submissionType is 'link' and value is provided
+    if (req.body.submissionType === 'link' && value) {
+      if (!value.match(/^https?:\/\//)) {
+        throw new Error('Valid submission link URL required');
+      }
+    }
+    return true;
+  }),
   body('codeSubmission').optional().custom((value, { req }) => {
     if (value) {
       try {
