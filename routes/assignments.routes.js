@@ -125,4 +125,34 @@ router.post('/user/process-payment', authenticateToken, [
   body('amount').isFloat({ min: 0 }).withMessage('Valid amount required')
 ], assignmentsController.processOverduePayment);
 
+// Update submission (for students)
+router.put('/:id/submission', [
+  authenticateToken,
+  requireUser,
+  body('submissionType').optional().isIn(['github', 'code', 'link', 'zip']).withMessage('Invalid submission type'),
+  body('githubLink').optional().isURL().withMessage('Valid GitHub URL required'),
+  body('submissionLink').optional().isURL().withMessage('Valid submission link URL required'),
+  body('codeSubmission').optional().custom((value, { req }) => {
+    if (value) {
+      try {
+        if (typeof value === 'string') {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'object' && parsed !== null) {
+            return true;
+          }
+        } else if (typeof value === 'object' && value !== null) {
+          return true;
+        }
+        throw new Error('Code submission must be a valid object');
+      } catch (error) {
+        throw new Error('Code submission must be a valid JSON object');
+      }
+    }
+    return true;
+  }).withMessage('Code submission must be a valid object')
+], assignmentsController.updateSubmission);
+
+// Check if user can edit submission
+router.get('/:id/can-edit', authenticateToken, requireUser, assignmentsController.canEditSubmission);
+
 module.exports = router; 

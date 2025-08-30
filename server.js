@@ -21,6 +21,7 @@ const assignmentsRoutes = require('./routes/assignments.routes');
 const challengesRoutes = require('./routes/challenges.routes');
 const paymentsRoutes = require('./routes/payments.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
+const weeklyAttendanceRoutes = require('./routes/weeklyAttendance.routes');
 
 const app = express();
 
@@ -122,6 +123,7 @@ app.use('/api/assignments', assignmentsRoutes);
 app.use('/api/challenges', challengesRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/weekly-attendance', weeklyAttendanceRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

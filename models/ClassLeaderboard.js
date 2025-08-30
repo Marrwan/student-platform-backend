@@ -31,12 +31,20 @@ module.exports = (sequelize) => {
     assignmentScore: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
-      defaultValue: 0
+      defaultValue: 0,
+      comment: 'Highest score from assignments'
     },
     attendanceScore: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
-      defaultValue: 0
+      defaultValue: 0,
+      comment: 'Total attendance score'
+    },
+    timelySubmissionScore: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Score for timely submissions'
     },
     assignmentsCompleted: {
       type: DataTypes.INTEGER,
@@ -57,6 +65,30 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0
+    },
+    timelySubmissions: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Number of timely submissions'
+    },
+    totalSubmissions: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Total number of submissions'
+    },
+    averageAssignmentScore: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Average score across all assignments'
+    },
+    averageAttendanceScore: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Average attendance score per session'
     },
     rank: {
       type: DataTypes.INTEGER

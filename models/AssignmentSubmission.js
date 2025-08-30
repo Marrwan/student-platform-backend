@@ -55,7 +55,7 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.NOW
     },
     status: {
-      type: DataTypes.ENUM('pending', 'reviewed', 'accepted', 'rejected'),
+      type: DataTypes.ENUM('pending', 'reviewed', 'accepted'),
       defaultValue: 'pending'
     },
     score: {
@@ -126,6 +126,10 @@ module.exports = (sequelize) => {
     },
     blockReason: {
       type: DataTypes.TEXT
+    },
+    requestCorrection: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
     }
   }, {
     indexes: [

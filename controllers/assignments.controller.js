@@ -40,18 +40,41 @@ class AssignmentsController {
     }
   }
 
-  // Get current user's submission for this assignment
+  // Get my submission
   async getMySubmission(req, res) {
     try {
       const result = await assignmentsService.getMySubmission(req.params.id, req.user.id);
       res.json(result);
     } catch (error) {
       console.error('Error in getMySubmission controller:', error);
-      if (error.message === 'Submission not found') {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: error.message });
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Update submission (for students)
+  async updateSubmission(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
       }
+
+      const result = await assignmentsService.updateSubmission(req.params.id, req.user.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in updateSubmission controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Check if user can edit submission
+  async canEditSubmission(req, res) {
+    try {
+      const result = await assignmentsService.canEditSubmission(req.params.id, req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in canEditSubmission controller:', error);
+      res.status(500).json({ message: error.message });
     }
   }
 
