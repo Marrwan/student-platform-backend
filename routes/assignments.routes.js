@@ -87,12 +87,14 @@ router.get('/:id/submissions', authenticateToken, requireAdmin, assignmentsContr
 router.put('/:id/submissions/:submissionId/mark', authenticateToken, requireAdmin, [
   body('score').optional().isFloat({ min: 0 }).withMessage('Score must be positive'),
   body('feedback').optional().trim().isLength({ max: 2000 }).withMessage('Feedback too long'),
-  body('status').optional().isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Valid status required')
+  body('status').optional().isIn(['pending', 'reviewed', 'accepted']).withMessage('Valid status required'),
+  body('requestCorrection').optional().isBoolean().withMessage('Request correction must be boolean'),
+  body('correctionComments').optional().trim().isLength({ max: 2000 }).withMessage('Correction comments too long')
 ], assignmentsController.markSubmission);
 
 // Review submission (admin only)
 router.put('/:id/submissions/:submissionId/review', authenticateToken, requireAdmin, [
-  body('status').isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Valid status required'),
+  body('status').isIn(['pending', 'reviewed', 'accepted']).withMessage('Valid status required'),
   body('score').optional().isInt({ min: 0, max: 1000 }).withMessage('Score must be between 0 and 1000'),
   body('adminFeedback').optional().trim().isLength({ max: 2000 }).withMessage('Feedback too long'),
   body('adminComments').optional().trim().isLength({ max: 2000 }).withMessage('Comments too long'),

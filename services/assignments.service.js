@@ -1150,13 +1150,13 @@ class AssignmentsService {
       }
 
       // Only allow scoring when marking as accepted
-      if (status !== 'accepted' && score !== undefined) {
+      if (status !== 'accepted' && (score !== undefined && score !== null)) {
         throw new Error('Score can only be set when marking submission as accepted');
       }
 
       // Validate score when marking as accepted
       if (status === 'accepted') {
-        if (score === undefined || score < 0 || score > submission.assignment.maxScore) {
+        if (score === undefined || score === null || score < 0 || score > submission.assignment.maxScore) {
           throw new Error(`Score must be between 0 and ${submission.assignment.maxScore} when marking as accepted`);
         }
       }
