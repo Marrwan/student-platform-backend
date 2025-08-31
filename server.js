@@ -34,7 +34,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
       scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "https://api.paystack.co"]
+      connectSrc: ["'self'", "https://api.paystack.co", "https://strangedevclass.netlify.app", "https://*.netlify.app"]
     }
   }
 }));
@@ -47,42 +47,85 @@ app.use(cors({
       'http://localhost:3002',
       'https://strangedevclass.netlify.app',
       'https://student-platform-frontend.onrender.com',
-      'https://*.netlify.app',
       process.env.FRONTEND_URL
     ].filter(Boolean);
 
     // Allow non-browser requests or same-origin (no origin header)
     if (!origin) return callback(null, true);
 
+    // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+
+    // Also allow any netlify.app subdomain
+    if (origin && origin.endsWith('.netlify.app')) {
+      return callback(null, true);
+    }
+
+    console.log(`CORS blocked for origin: ${origin}`);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length']
 }));
 
 // Explicitly handle preflight requests
 app.options('*', cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'https://strangedevclass.netlify.app',
-    'https://student-platform-frontend.onrender.com',
-    'https://*.netlify.app',
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'https://strangedevclass.netlify.app',
+      'https://student-platform-frontend.onrender.com',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+
+    // Allow non-browser requests or same-origin (no origin header)
+    if (!origin) return callback(null, true);
+
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Also allow any netlify.app subdomain
+    if (origin && origin.endsWith('.netlify.app')) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
 // Compression middleware
 app.use(compression());
+
+// CORS debugging middleware
+app.use((req, res, next) => {
+  console.log(`[CORS Debug] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
+
+// Specific CORS handler for assignment submission
+app.use('/api/assignments/:id/submit', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://strangedevclass.netlify.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // // Rate limiting
 // const limiter = rateLimit({
