@@ -219,7 +219,7 @@ class AssignmentsService {
     }
   }
 
-  // Get current user's submission for this assignment
+  // Get my submission for an assignment
   async getMySubmission(assignmentId, userId) {
     try {
       const submission = await AssignmentSubmission.findOne({
@@ -233,11 +233,8 @@ class AssignmentsService {
         ]
       });
 
-      if (!submission) {
-        throw new Error('Submission not found');
-      }
-
-      return { submission };
+      // Return null submission if not found (this is normal for new students)
+      return { submission: submission || null };
     } catch (error) {
       console.error('Error fetching my submission:', error);
       throw error;
@@ -442,8 +439,43 @@ class AssignmentsService {
       });
 
       if (existingSubmission) {
-        // Update existing submission
-        await existingSubmission.destroy();
+        // Update existing submission instead of deleting and recreating
+        const updateData = {
+          submissionType,
+          submittedAt: new Date()
+        };
+
+        if (submissionType === 'github') {
+          updateData.githubLink = githubLink;
+        } else if (submissionType === 'code') {
+          updateData.codeSubmission = codeSubmission;
+        } else if (submissionType === 'link') {
+          updateData.submissionLink = submissionLink;
+        } else if (submissionType === 'zip') {
+          updateData.zipFileUrl = file.path;
+        }
+
+        // Reset status to pending when updated
+        updateData.status = 'pending';
+        updateData.requestCorrection = false;
+
+        await existingSubmission.update(updateData);
+        
+        // Refresh the submission data
+        await existingSubmission.reload({
+          include: [
+            {
+              model: Assignment,
+              as: 'assignment',
+              include: [{ model: Class, as: 'class' }]
+            }
+          ]
+        });
+
+        return {
+          message: 'Submission updated successfully',
+          submission: existingSubmission
+        };
       }
 
       // Validate submission based on assignment submission mode
