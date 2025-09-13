@@ -53,4 +53,7 @@ router.get('/classes/:classId/students/:userId/attendance', authenticateToken, r
 // Get class attendance summary
 router.get('/classes/:classId/attendance/summary', authenticateToken, requireAdmin, weeklyAttendanceController.getClassAttendanceSummary);
 
+// Refresh attendance scores for all students in a class
+router.post('/classes/:classId/attendance/refresh', authenticateToken, requireAdmin, weeklyAttendanceController.refreshClassAttendanceScores);
+
 module.exports = router;

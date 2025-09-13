@@ -127,6 +127,20 @@ class WeeklyAttendanceController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // Refresh attendance scores for all students in a class
+  async refreshClassAttendanceScores(req, res) {
+    try {
+      const { classId } = req.params;
+      
+      const result = await weeklyAttendanceService.refreshClassAttendanceScores(classId);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error in refreshClassAttendanceScores controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
 }
 
 module.exports = new WeeklyAttendanceController();

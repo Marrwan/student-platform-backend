@@ -108,6 +108,9 @@ class WeeklyAttendanceService {
       weeklyAttendance.calculateAttendance();
       await weeklyAttendance.save();
 
+      // Update ClassEnrollment attendanceScore
+      await this.updateClassEnrollmentAttendanceScore(classId, userId);
+
       return {
         message: 'Weekly attendance marked successfully',
         attendance: weeklyAttendance
@@ -292,6 +295,74 @@ class WeeklyAttendanceService {
       return students;
     } catch (error) {
       console.error('Error fetching enrolled students:', error);
+      throw error;
+    }
+  }
+
+  // Update ClassEnrollment attendanceScore based on weekly attendance
+  async updateClassEnrollmentAttendanceScore(classId, userId) {
+    try {
+      // Get all weekly attendance records for this student in this class
+      const weeklyAttendances = await WeeklyAttendance.findAll({
+        where: { classId, userId },
+        order: [['weekStartDate', 'ASC']]
+      });
+
+      if (weeklyAttendances.length === 0) {
+        return;
+      }
+
+      // Calculate average attendance percentage
+      const totalPercentage = weeklyAttendances.reduce((sum, attendance) => {
+        return sum + parseFloat(attendance.attendancePercentage || 0);
+      }, 0);
+
+      const averageAttendancePercentage = totalPercentage / weeklyAttendances.length;
+
+      // Update ClassEnrollment
+      await ClassEnrollment.update(
+        { 
+          attendanceScore: averageAttendancePercentage,
+          lastActivity: new Date()
+        },
+        { where: { classId, userId } }
+      );
+
+      console.log(`Updated attendance score for user ${userId} in class ${classId}: ${averageAttendancePercentage.toFixed(2)}%`);
+    } catch (error) {
+      console.error('Error updating class enrollment attendance score:', error);
+      // Don't throw error to avoid breaking the main attendance marking process
+    }
+  }
+
+  // Refresh attendance scores for all students in a class
+  async refreshClassAttendanceScores(classId) {
+    try {
+      // Get all enrolled students
+      const enrollments = await ClassEnrollment.findAll({
+        where: { classId },
+        attributes: ['userId']
+      });
+
+      const userIds = enrollments.map(enrollment => enrollment.userId);
+      
+      if (userIds.length === 0) {
+        return { message: 'No students found in class' };
+      }
+
+      // Update attendance scores for all students
+      const updatePromises = userIds.map(userId => 
+        this.updateClassEnrollmentAttendanceScore(classId, userId)
+      );
+
+      await Promise.all(updatePromises);
+
+      return { 
+        message: `Refreshed attendance scores for ${userIds.length} students`,
+        studentCount: userIds.length
+      };
+    } catch (error) {
+      console.error('Error refreshing class attendance scores:', error);
       throw error;
     }
   }

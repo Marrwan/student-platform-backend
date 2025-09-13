@@ -1,4 +1,4 @@
-const { User, Submission, Project, Class, ClassEnrollment, Assignment, AssignmentSubmission, sequelize } = require('../models');
+const { User, Submission, Project, Class, ClassEnrollment, Assignment, AssignmentSubmission, WeeklyAttendance, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 class LeaderboardService {
@@ -45,31 +45,68 @@ class LeaderboardService {
       // Combine filters
       const finalWhere = { ...whereClause, ...dateFilter };
 
-      // Enhanced leaderboard query with intelligent scoring
+      // Enhanced leaderboard query with intelligent scoring - includes both project submissions and assignment submissions
       const leaderboardQuery = `
         SELECT 
           u.id,
           u."firstName",
           u."lastName",
           u.email,
-          COUNT(s.id) as "totalSubmissions",
-          COALESCE(SUM(s.score), 0) as "totalScore",
-          COALESCE(AVG(s.score), 0) as "averageScore",
-          MAX(s."submittedAt") as "lastSubmissionAt",
-          COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "completedProjects",
-          COALESCE(SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END), 0) as "acceptedScore",
-          COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
-          COALESCE(SUM(CASE WHEN s.status = 'rejected' THEN 1 ELSE 0 END), 0) as "rejectedSubmissions",
-          COALESCE(SUM(CASE WHEN s."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          COALESCE(project_stats."totalSubmissions", 0) + COALESCE(assignment_stats."totalSubmissions", 0) as "totalSubmissions",
+          COALESCE(project_stats."totalScore", 0) + COALESCE(assignment_stats."totalScore", 0) as "totalScore",
+          CASE 
+            WHEN (COALESCE(project_stats."totalSubmissions", 0) + COALESCE(assignment_stats."totalSubmissions", 0)) > 0 
+            THEN (COALESCE(project_stats."totalScore", 0) + COALESCE(assignment_stats."totalScore", 0)) / (COALESCE(project_stats."totalSubmissions", 0) + COALESCE(assignment_stats."totalSubmissions", 0))
+            ELSE 0 
+          END as "averageScore",
+          GREATEST(COALESCE(project_stats."lastSubmissionAt", '1900-01-01'::timestamp), COALESCE(assignment_stats."lastSubmissionAt", '1900-01-01'::timestamp)) as "lastSubmissionAt",
+          COALESCE(project_stats."completedProjects", 0) + COALESCE(assignment_stats."completedAssignments", 0) as "completedProjects",
+          COALESCE(project_stats."acceptedScore", 0) + COALESCE(assignment_stats."acceptedScore", 0) as "acceptedScore",
+          COALESCE(project_stats."acceptedSubmissions", 0) + COALESCE(assignment_stats."acceptedSubmissions", 0) as "acceptedSubmissions",
+          COALESCE(project_stats."rejectedSubmissions", 0) + COALESCE(assignment_stats."rejectedSubmissions", 0) as "rejectedSubmissions",
+          COALESCE(project_stats."lateSubmissions", 0) + COALESCE(assignment_stats."lateSubmissions", 0) as "lateSubmissions"
         FROM "Users" u
-        LEFT JOIN "Submissions" s ON u.id = s."userId"
-        ${Object.keys(finalWhere).length > 0 ? 'WHERE ' + Object.keys(finalWhere).map(key => {
-          if (key === 'submittedAt') {
-            return `s."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
-          }
-          return `s."${key}" = '${finalWhere[key]}'`;
-        }).join(' AND ') : ''}
-        GROUP BY u.id, u."firstName", u."lastName", u.email
+        LEFT JOIN (
+          SELECT 
+            s."userId",
+            COUNT(s.id) as "totalSubmissions",
+            COALESCE(SUM(s.score), 0) as "totalScore",
+            MAX(s."submittedAt") as "lastSubmissionAt",
+            COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "completedProjects",
+            COALESCE(SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END), 0) as "acceptedScore",
+            COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
+            COALESCE(SUM(CASE WHEN s.status = 'rejected' THEN 1 ELSE 0 END), 0) as "rejectedSubmissions",
+            COALESCE(SUM(CASE WHEN s."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          FROM "Submissions" s
+          ${Object.keys(finalWhere).length > 0 ? 'WHERE ' + Object.keys(finalWhere).map(key => {
+            if (key === 'submittedAt') {
+              return `s."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
+            }
+            return `s."${key}" = '${finalWhere[key]}'`;
+          }).join(' AND ') : ''}
+          GROUP BY s."userId"
+        ) project_stats ON u.id = project_stats."userId"
+        LEFT JOIN (
+          SELECT 
+            asub."userId",
+            COUNT(asub.id) as "totalSubmissions",
+            COALESCE(SUM(asub.score), 0) as "totalScore",
+            MAX(asub."submittedAt") as "lastSubmissionAt",
+            COUNT(CASE WHEN asub.status = 'accepted' THEN 1 END) as "completedAssignments",
+            COALESCE(SUM(CASE WHEN asub.status = 'accepted' THEN asub.score ELSE 0 END), 0) as "acceptedScore",
+            COUNT(CASE WHEN asub.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
+            COALESCE(SUM(CASE WHEN asub.status = 'rejected' THEN 1 ELSE 0 END), 0) as "rejectedSubmissions",
+            COALESCE(SUM(CASE WHEN asub."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          FROM "AssignmentSubmissions" asub
+          ${Object.keys(finalWhere).length > 0 ? 'WHERE ' + Object.keys(finalWhere).map(key => {
+            if (key === 'submittedAt') {
+              return `asub."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
+            }
+            return `asub."${key}" = '${finalWhere[key]}'`;
+          }).join(' AND ') : ''}
+          GROUP BY asub."userId"
+        ) assignment_stats ON u.id = assignment_stats."userId"
+        GROUP BY u.id, u."firstName", u."lastName", u.email, project_stats.*, assignment_stats.*
         ORDER BY "acceptedScore" DESC, "averageScore" DESC, "completedProjects" DESC
         LIMIT ${parseInt(limit)}
         OFFSET ${(parseInt(page) - 1) * parseInt(limit)}
@@ -169,17 +206,40 @@ class LeaderboardService {
           ce.progress,
           ce."averageScore",
           ce."attendanceScore",
-          COUNT(s.id) as "totalSubmissions",
-          COALESCE(SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END), 0) as "acceptedScore",
-          COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
-          COUNT(CASE WHEN s.status = 'rejected' THEN 1 END) as "rejectedSubmissions",
-          COALESCE(SUM(CASE WHEN s."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          COALESCE(project_stats."totalSubmissions", 0) + COALESCE(assignment_stats."totalSubmissions", 0) as "totalSubmissions",
+          COALESCE(project_stats."acceptedScore", 0) + COALESCE(assignment_stats."acceptedScore", 0) as "acceptedScore",
+          COALESCE(project_stats."acceptedSubmissions", 0) + COALESCE(assignment_stats."acceptedSubmissions", 0) as "acceptedSubmissions",
+          COALESCE(project_stats."rejectedSubmissions", 0) + COALESCE(assignment_stats."rejectedSubmissions", 0) as "rejectedSubmissions",
+          COALESCE(project_stats."lateSubmissions", 0) + COALESCE(assignment_stats."lateSubmissions", 0) as "lateSubmissions"
         FROM "Users" u
         INNER JOIN "ClassEnrollments" ce ON u.id = ce."userId"
-        LEFT JOIN "Submissions" s ON u.id = s."userId"
+        LEFT JOIN (
+          SELECT 
+            s."userId",
+            COUNT(s.id) as "totalSubmissions",
+            COALESCE(SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END), 0) as "acceptedScore",
+            COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
+            COUNT(CASE WHEN s.status = 'rejected' THEN 1 END) as "rejectedSubmissions",
+            COALESCE(SUM(CASE WHEN s."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          FROM "Submissions" s
+          GROUP BY s."userId"
+        ) project_stats ON u.id = project_stats."userId"
+        LEFT JOIN (
+          SELECT 
+            asub."userId",
+            COUNT(asub.id) as "totalSubmissions",
+            COALESCE(SUM(CASE WHEN asub.status = 'accepted' THEN asub.score ELSE 0 END), 0) as "acceptedScore",
+            COUNT(CASE WHEN asub.status = 'accepted' THEN 1 END) as "acceptedSubmissions",
+            COUNT(CASE WHEN asub.status = 'rejected' THEN 1 END) as "rejectedSubmissions",
+            COALESCE(SUM(CASE WHEN asub."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
+          FROM "AssignmentSubmissions" asub
+          INNER JOIN "Assignments" a ON asub."assignmentId" = a.id
+          WHERE a."classId" = '${classId}'
+          GROUP BY asub."userId"
+        ) assignment_stats ON u.id = assignment_stats."userId"
         WHERE ce."classId" = '${classId}'
-        GROUP BY u.id, u."firstName", u."lastName", u.email, ce."enrolledAt", ce.progress, ce."averageScore", ce."attendanceScore"
-        ORDER BY (ce."attendanceScore" * 0.3 + COALESCE(SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END), 0) * 0.7) DESC
+        GROUP BY u.id, u."firstName", u."lastName", u.email, ce."enrolledAt", ce.progress, ce."averageScore", ce."attendanceScore", project_stats.*, assignment_stats.*
+        ORDER BY (ce."attendanceScore" * 0.3 + (COALESCE(project_stats."acceptedScore", 0) + COALESCE(assignment_stats."acceptedScore", 0)) * 0.7) DESC
       `;
 
       const leaderboardData = await sequelize.query(classLeaderboardQuery, {
