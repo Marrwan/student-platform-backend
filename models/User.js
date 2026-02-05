@@ -118,6 +118,35 @@ module.exports = (sequelize) => {
     metadata: {
       type: DataTypes.JSONB,
       defaultValue: {}
+    },
+    // HRMS Fields
+    departmentId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'Departments',
+        key: 'id'
+      }
+    },
+    managerId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    jobTitle: {
+      type: DataTypes.STRING // e.g., "Backend Engineer", "Senior Analyst 1"
+    },
+    staffRole: {
+      type: DataTypes.STRING // Internal level: "Intern", "Analyst", "Manager"
+    },
+    location: {
+      type: DataTypes.STRING
+    },
+    joinedAt: {
+      type: DataTypes.DATE
     }
   }, {
     hooks: {
@@ -134,19 +163,19 @@ module.exports = (sequelize) => {
     }
   });
 
-  User.prototype.comparePassword = async function(candidatePassword) {
+  User.prototype.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
   };
 
-  User.prototype.getFullName = function() {
+  User.prototype.getFullName = function () {
     return `${this.firstName} ${this.lastName}`;
   };
 
-  User.prototype.isAdmin = function() {
+  User.prototype.isAdmin = function () {
     return this.role === 'admin' || this.role === 'partial_admin';
   };
 
-  User.prototype.hasPermission = function(permission) {
+  User.prototype.hasPermission = function (permission) {
     if (this.role === 'admin') return true;
     if (this.role === 'partial_admin') {
       return this.permissions && this.permissions[permission];
@@ -154,23 +183,23 @@ module.exports = (sequelize) => {
     return false;
   };
 
-  User.prototype.canCreateClasses = function() {
+  User.prototype.canCreateClasses = function () {
     return this.hasPermission('canCreateClasses');
   };
 
-  User.prototype.canManageStudents = function() {
+  User.prototype.canManageStudents = function () {
     return this.hasPermission('canManageStudents');
   };
 
-  User.prototype.canReviewSubmissions = function() {
+  User.prototype.canReviewSubmissions = function () {
     return this.hasPermission('canReviewSubmissions');
   };
 
-  User.prototype.canManageProjects = function() {
+  User.prototype.canManageProjects = function () {
     return this.hasPermission('canManageProjects');
   };
 
-  User.prototype.canViewAnalytics = function() {
+  User.prototype.canViewAnalytics = function () {
     return this.hasPermission('canViewAnalytics');
   };
 
@@ -202,6 +231,28 @@ module.exports = (sequelize) => {
     User.hasMany(models.Payment, {
       foreignKey: 'userId',
       as: 'payments'
+    });
+
+    // HRMS Associations
+    User.belongsTo(models.Department, {
+      foreignKey: 'departmentId',
+      as: 'department'
+    });
+    User.belongsTo(models.User, {
+      foreignKey: 'managerId',
+      as: 'manager'
+    });
+    User.hasMany(models.User, {
+      foreignKey: 'managerId',
+      as: 'directReports'
+    });
+    User.hasMany(models.Appraisal, {
+      foreignKey: 'userId',
+      as: 'myAppraisals'
+    });
+    User.hasMany(models.Appraisal, {
+      foreignKey: 'reviewerId',
+      as: 'reviewsToConduct'
     });
   };
 

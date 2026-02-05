@@ -22,6 +22,9 @@ const challengesRoutes = require('./routes/challenges.routes');
 const paymentsRoutes = require('./routes/payments.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
 const weeklyAttendanceRoutes = require('./routes/weeklyAttendance.routes');
+const hrmsRoutes = require('./routes/hrms.routes');
+const appraisalRoutes = require('./routes/appraisals.routes');
+const payrollRoutes = require('./routes/payroll.routes');
 
 const app = express();
 
@@ -40,7 +43,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
@@ -74,7 +77,7 @@ app.use(cors({
 
 // Explicitly handle preflight requests
 app.options('*', cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
@@ -119,7 +122,7 @@ app.use('/api/assignments/:id/submit', (req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
   } else {
@@ -167,11 +170,14 @@ app.use('/api/challenges', challengesRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/weekly-attendance', weeklyAttendanceRoutes);
+app.use('/api/hrms', hrmsRoutes);
+app.use('/api/appraisals', appraisalRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
@@ -181,7 +187,7 @@ app.get('/api/health', (req, res) => {
 // Global error handling middleware
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
-  
+
   // Sequelize validation errors
   if (err.name === 'SequelizeValidationError') {
     return res.status(400).json({
@@ -192,7 +198,7 @@ app.use((err, req, res, next) => {
       }))
     });
   }
-  
+
   // Sequelize unique constraint errors
   if (err.name === 'SequelizeUniqueConstraintError') {
     return res.status(400).json({
@@ -203,7 +209,7 @@ app.use((err, req, res, next) => {
       }))
     });
   }
-  
+
   // Multer file upload errors
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
@@ -211,14 +217,14 @@ app.use((err, req, res, next) => {
       message: 'File size exceeds the limit'
     });
   }
-  
+
   if (err.code === 'LIMIT_UNEXPECTED_FILE') {
     return res.status(400).json({
       error: 'Unexpected file field',
       message: 'File field name not expected'
     });
   }
-  
+
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
@@ -226,14 +232,14 @@ app.use((err, req, res, next) => {
       message: 'Authentication token is invalid'
     });
   }
-  
+
   if (err.name === 'TokenExpiredError') {
     return res.status(401).json({
       error: 'Token expired',
       message: 'Authentication token has expired'
     });
   }
-  
+
   // Paystack errors
   if (err.message && err.message.includes('Paystack')) {
     return res.status(400).json({
@@ -241,7 +247,7 @@ app.use((err, req, res, next) => {
       message: err.message
     });
   }
-  
+
   // Default error response
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
@@ -273,15 +279,15 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
-    
 
-    
+
+
     // Sync models in development
     if (process.env.NODE_ENV === 'development') {
-    //   await sequelize.sync({ alter: true });
+      //   await sequelize.sync({ alter: true });
       console.log('✅ Database models synchronized.');
     }
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);

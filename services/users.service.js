@@ -5,13 +5,17 @@ class UsersService {
   async getUserProfile(userId) {
     try {
       const user = await User.findByPk(userId, {
-        attributes: { exclude: ['password'] }
+        attributes: { exclude: ['password'] },
+        include: [
+          { model: require('../models').Department, as: 'department' },
+          { model: User, as: 'manager', attributes: ['id', 'firstName', 'lastName'] },
+        ]
       });
-      
+
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       return { user };
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -36,12 +40,12 @@ class UsersService {
       }
 
       await user.update(profileData);
-      
+
       const updatedUser = await User.findByPk(userId, {
         attributes: { exclude: ['password'] }
       });
 
-      return { 
+      return {
         message: 'Profile updated successfully',
         user: updatedUser
       };
@@ -56,7 +60,7 @@ class UsersService {
     try {
       const { currentPassword, newPassword } = passwordData;
       const user = await User.findByPk(userId);
-      
+
       if (!user) {
         throw new Error('User not found');
       }
@@ -115,11 +119,11 @@ class UsersService {
       const user = await User.findByPk(userId, {
         attributes: { exclude: ['password'] }
       });
-      
+
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       return { user };
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -144,12 +148,12 @@ class UsersService {
       }
 
       await user.update(userData);
-      
+
       const updatedUser = await User.findByPk(userId, {
         attributes: { exclude: ['password'] }
       });
 
-      return { 
+      return {
         message: 'User updated successfully',
         user: updatedUser
       };
