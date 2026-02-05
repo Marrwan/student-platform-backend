@@ -19,7 +19,7 @@ class AssignmentsService {
           where: { userId: user.id },
           attributes: ['classId']
         });
-        
+
         const classIds = enrollments.map(e => e.classId);
         whereClause.classId = { [Op.in]: classIds };
         // Remove the isUnlocked filter - students can see all assignments
@@ -55,18 +55,18 @@ class AssignmentsService {
         assignments.rows = assignments.rows.map(assignment => {
           const assignmentData = assignment.toJSON();
           const submission = assignment.submissions?.[0];
-          
+
           // Add model methods to the response
           assignmentData.isOverdue = assignment.isOverdue();
           assignmentData.timeRemaining = assignment.getTimeRemaining();
           assignmentData.canSubmit = assignment.canSubmit();
           assignmentData.getStatus = assignment.getStatus();
           assignmentData.isAvailable = assignment.isAvailable();
-          
+
           assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
           assignmentData.submissionScore = submission ? submission.score : null;
           assignmentData.hasSubmission = !!submission;
-          
+
           return assignmentData;
         });
       } else {
@@ -185,8 +185,8 @@ class AssignmentsService {
     try {
       const assignment = await Assignment.findByPk(assignmentId, {
         include: [
-          { 
-            model: Class, 
+          {
+            model: Class,
             as: 'class',
             include: [{
               model: User,
@@ -296,7 +296,7 @@ class AssignmentsService {
 
         // Delete attendance scores related to this assignment (if any)
         await AttendanceScore.destroy({
-          where: { 
+          where: {
             classId: assignment.classId,
             notes: { [Op.like]: `%assignment:${assignmentId}%` }
           },
@@ -313,7 +313,7 @@ class AssignmentsService {
         for (const entry of leaderboardEntries) {
           // Get user's remaining submissions (excluding the deleted assignment)
           const remainingSubmissions = await AssignmentSubmission.findAll({
-            where: { 
+            where: {
               userId: entry.userId,
               assignmentId: { [Op.ne]: assignmentId }
             },
@@ -322,7 +322,8 @@ class AssignmentsService {
 
           // Calculate new assignment score
           const newAssignmentScore = remainingSubmissions.reduce((total, submission) => {
-            return total + (submission.finalScore || submission.score || 0);
+            const score = parseFloat(submission.finalScore) || parseFloat(submission.score) || 0;
+            return total + score;
           }, 0);
 
           // Get attendance scores
@@ -332,7 +333,7 @@ class AssignmentsService {
           });
 
           const attendanceScore = attendanceScores.reduce((total, score) => {
-            return total + score.score;
+            return total + (parseFloat(score.score) || 0);
           }, 0);
 
           const totalScore = newAssignmentScore + attendanceScore;
@@ -354,7 +355,7 @@ class AssignmentsService {
         });
 
         for (let i = 0; i < updatedLeaderboardEntries.length; i++) {
-          await updatedLeaderboardEntries[i].update({ 
+          await updatedLeaderboardEntries[i].update({
             rank: i + 1
           }, { transaction: t });
         }
@@ -395,8 +396,8 @@ class AssignmentsService {
       }
 
       const assignment = await Assignment.findByPk(assignmentId, {
-        include: [{ 
-          model: Class, 
+        include: [{
+          model: Class,
           as: 'class',
           include: [{
             model: User,
@@ -423,7 +424,7 @@ class AssignmentsService {
       if (!assignment.canSubmit()) {
         const now = new Date();
         const startDate = new Date(assignment.startDate);
-        
+
         if (now < startDate) {
           throw new Error('Assignment has not started yet. Start time: ' + startDate.toLocaleString());
         } else if (now > assignment.deadline && !assignment.allowLateSubmission) {
@@ -460,7 +461,7 @@ class AssignmentsService {
         updateData.requestCorrection = false;
 
         await existingSubmission.update(updateData);
-        
+
         // Refresh the submission data
         await existingSubmission.reload({
           include: [
@@ -527,7 +528,7 @@ class AssignmentsService {
       if (isLate) {
         submissionDataToSave.isLate = true;
         submissionDataToSave.latePenalty = assignment.calculateLatePenalty(new Date());
-        
+
         // If payment is required for late submissions
         if (assignment.paymentRequired) {
           submissionDataToSave.paymentStatus = 'pending';
@@ -754,7 +755,7 @@ class AssignmentsService {
       // Check if attendance score already exists for this date
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const existingScore = await AttendanceScore.findOne({
         where: {
           classId,
@@ -820,7 +821,7 @@ class AssignmentsService {
       // Enhance leaderboard data with detailed metrics
       const enhancedLeaderboard = leaderboard.rows.map(entry => {
         const data = entry.toJSON();
-        
+
         // Add detailed metrics breakdown
         data.metrics = {
           assignmentScore: {
@@ -846,8 +847,8 @@ class AssignmentsService {
             breakdown: {
               timely: data.timelySubmissions,
               total: data.totalSubmissions,
-              percentage: data.totalSubmissions > 0 
-                ? Math.round((data.timelySubmissions / data.totalSubmissions) * 100) 
+              percentage: data.totalSubmissions > 0
+                ? Math.round((data.timelySubmissions / data.totalSubmissions) * 100)
                 : 0
             }
           }
@@ -881,7 +882,7 @@ class AssignmentsService {
               weight: 'Primary component'
             },
             {
-              name: 'Attendance Score', 
+              name: 'Attendance Score',
               description: 'Total attendance score from daily and weekly attendance records',
               weight: 'Secondary component'
             },
@@ -925,16 +926,16 @@ class AssignmentsService {
       });
 
       // Calculate assignment score (highest score from all assignments)
-      const validSubmissions = submissions.filter(sub => 
+      const validSubmissions = submissions.filter(sub =>
         sub.status === 'accepted' || sub.status === 'reviewed'
       );
-      
+
       // Group submissions by assignment and get the highest score for each
       const assignmentScores = {};
       validSubmissions.forEach(submission => {
         const assignmentId = submission.assignmentId;
         const score = submission.finalScore || submission.score || 0;
-        
+
         if (!assignmentScores[assignmentId] || score > assignmentScores[assignmentId]) {
           assignmentScores[assignmentId] = score;
         }
@@ -944,8 +945,8 @@ class AssignmentsService {
         return total + score;
       }, 0);
 
-      const averageAssignmentScore = Object.values(assignmentScores).length > 0 
-        ? assignmentScore / Object.values(assignmentScores).length 
+      const averageAssignmentScore = Object.values(assignmentScores).length > 0
+        ? assignmentScore / Object.values(assignmentScores).length
         : 0;
 
       // Calculate timely submission score
@@ -957,7 +958,7 @@ class AssignmentsService {
         if (submission.submittedAt && submission.assignment && submission.assignment.deadline) {
           const submittedAt = new Date(submission.submittedAt);
           const deadline = new Date(submission.assignment.deadline);
-          
+
           if (submittedAt <= deadline && !submission.isLate) {
             timelySubmissions++;
             // Award points for timely submission (e.g., 10 points per timely submission)
@@ -988,8 +989,8 @@ class AssignmentsService {
 
       const attendanceScore = dailyAttendanceScore + weeklyAttendanceScore;
       const totalAttendanceSessions = dailyAttendanceScores.length + weeklyAttendanceScores.length;
-      const averageAttendanceScore = totalAttendanceSessions > 0 
-        ? attendanceScore / totalAttendanceSessions 
+      const averageAttendanceScore = totalAttendanceSessions > 0
+        ? attendanceScore / totalAttendanceSessions
         : 0;
 
       // Calculate total score (assignment + attendance + timely submission)
@@ -1059,7 +1060,7 @@ class AssignmentsService {
       });
 
       const userIds = enrollments.map(enrollment => enrollment.userId);
-      
+
       console.log(`Refreshing leaderboard for ${userIds.length} students in class ${classId}`);
 
       // Update leaderboard for each student
@@ -1089,7 +1090,7 @@ class AssignmentsService {
       const { sequelize } = require('../models');
       await sequelize.transaction(async (t) => {
         for (let i = 0; i < leaderboardEntries.length; i++) {
-          await leaderboardEntries[i].update({ 
+          await leaderboardEntries[i].update({
             rank: i + 1,
             lastUpdated: new Date()
           }, { transaction: t });
@@ -1375,7 +1376,7 @@ class AssignmentsService {
       // Check if deadline has passed
       const now = new Date();
       const deadline = new Date(submission.assignment.deadline);
-      
+
       if (now > deadline) {
         return { canEdit: false, reason: 'Assignment deadline has passed' };
       }
@@ -1407,7 +1408,7 @@ class AssignmentsService {
       // Update submission data
       const allowedFields = ['submissionType', 'githubLink', 'submissionLink', 'codeSubmission'];
       const updateFields = {};
-      
+
       for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
           updateFields[field] = updateData[field];
