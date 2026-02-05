@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const payrollController = require('../controllers/payroll.controller');
-const { auth, isAdmin, isStaff } = require('../middleware/auth.middleware');
+const { auth, isAdmin, isStaff } = require('../middleware/auth');
 
 router.post('/', [auth, isAdmin], payrollController.createPayrollEntry);
 router.get('/my', [auth, isStaff], payrollController.getMyPayroll); // For staff to see their history

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const appraisalController = require('../controllers/appraisals.controller');
-const { auth, isAdmin, isStaff } = require('../middleware/auth.middleware');
+const { auth, isAdmin, isStaff } = require('../middleware/auth');
 
 // Cycles
 router.post('/cycles', [auth, isAdmin], appraisalController.createCycle);

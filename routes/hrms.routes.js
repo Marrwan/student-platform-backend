@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const hrmsController = require('../controllers/hrms.controller');
-const { auth, isAdmin, isStaff } = require('../middleware/auth.middleware');
+const { auth, isAdmin, isStaff } = require('../middleware/auth');
 
 // Department Routes (Admin only)
 router.post('/departments', [auth, isAdmin], hrmsController.createDepartment);
