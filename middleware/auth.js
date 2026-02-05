@@ -4,7 +4,7 @@ const { User } = require('../models');
 const authenticateToken = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
@@ -61,9 +61,26 @@ const requireUser = (req, res, next) => {
   next();
 };
 
+const requireStaff = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+
+  // Admin and partial_admin are always staff. Also users with a staffRole set.
+  if (req.user.role === 'admin' || req.user.role === 'partial_admin' || (req.user.staffRole && req.user.staffRole !== 'null')) {
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Access denied. Staff privileges required.' });
+};
+
 module.exports = {
   authenticateToken,
+  auth: authenticateToken,
   requireRole,
   requireAdmin,
-  requireUser
+  isAdmin: requireAdmin,
+  requireUser,
+  requireStaff,
+  isStaff: requireStaff
 }; 
