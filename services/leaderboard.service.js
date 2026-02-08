@@ -6,10 +6,10 @@ class LeaderboardService {
   async getLeaderboard(params, userId) {
     try {
       const { filter = 'all-time', projectId, page = 1, limit = 20 } = params;
-      
+
       let whereClause = {};
       let dateFilter = {};
-      
+
       // Apply date filter
       if (filter === 'daily') {
         const today = new Date();
@@ -79,11 +79,11 @@ class LeaderboardService {
             COALESCE(SUM(CASE WHEN s."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
           FROM "Submissions" s
           ${Object.keys(finalWhere).length > 0 ? 'WHERE ' + Object.keys(finalWhere).map(key => {
-            if (key === 'submittedAt') {
-              return `s."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
-            }
-            return `s."${key}" = '${finalWhere[key]}'`;
-          }).join(' AND ') : ''}
+        if (key === 'submittedAt') {
+          return `s."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
+        }
+        return `s."${key}" = '${finalWhere[key]}'`;
+      }).join(' AND ') : ''}
           GROUP BY s."userId"
         ) project_stats ON u.id = project_stats."userId"
         LEFT JOIN (
@@ -99,14 +99,13 @@ class LeaderboardService {
             COALESCE(SUM(CASE WHEN asub."isLate" = true THEN 1 ELSE 0 END), 0) as "lateSubmissions"
           FROM "AssignmentSubmissions" asub
           ${Object.keys(finalWhere).length > 0 ? 'WHERE ' + Object.keys(finalWhere).map(key => {
-            if (key === 'submittedAt') {
-              return `asub."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
-            }
-            return `asub."${key}" = '${finalWhere[key]}'`;
-          }).join(' AND ') : ''}
+        if (key === 'submittedAt') {
+          return `asub."submittedAt" >= '${finalWhere[key][Op.gte].toISOString()}'`;
+        }
+        return `asub."${key}" = '${finalWhere[key]}'`;
+      }).join(' AND ') : ''}
           GROUP BY asub."userId"
         ) assignment_stats ON u.id = assignment_stats."userId"
-        GROUP BY u.id, u."firstName", u."lastName", u.email, project_stats.*, assignment_stats.*
         ORDER BY "acceptedScore" DESC, "averageScore" DESC, "completedProjects" DESC
         LIMIT ${parseInt(limit)}
         OFFSET ${(parseInt(page) - 1) * parseInt(limit)}
@@ -144,13 +143,13 @@ class LeaderboardService {
         const lateSubmissions = parseInt(user.lateSubmissions) || 0;
         const acceptedScore = parseInt(user.acceptedScore) || 0;
         const averageScore = parseFloat(user.averageScore) || 0;
-        
+
         // Calculate intelligent metrics
         const completionRate = totalSubmissions > 0 ? (acceptedSubmissions / totalSubmissions) * 100 : 0;
         const qualityScore = acceptedSubmissions > 0 ? (acceptedScore / acceptedSubmissions) : 0;
         const penaltyPoints = lateSubmissions * 5; // 5 points penalty per late submission
         const bonusPoints = completionRate >= 80 ? 50 : (completionRate >= 60 ? 25 : 0); // Bonus for high completion rate
-        
+
         const finalScore = acceptedScore + bonusPoints - penaltyPoints;
 
         return {
@@ -238,7 +237,6 @@ class LeaderboardService {
           GROUP BY asub."userId"
         ) assignment_stats ON u.id = assignment_stats."userId"
         WHERE ce."classId" = '${classId}'
-        GROUP BY u.id, u."firstName", u."lastName", u.email, ce."enrolledAt", ce.progress, ce."averageScore", ce."attendanceScore", project_stats.*, assignment_stats.*
         ORDER BY (ce."attendanceScore" * 0.3 + (COALESCE(project_stats."acceptedScore", 0) + COALESCE(assignment_stats."acceptedScore", 0)) * 0.7) DESC
       `;
 
@@ -252,7 +250,7 @@ class LeaderboardService {
         const totalSubmissions = parseInt(user.totalSubmissions) || 0;
         const acceptedSubmissions = parseInt(user.acceptedSubmissions) || 0;
         const lateSubmissions = parseInt(user.lateSubmissions) || 0;
-        
+
         // Class-specific scoring: 30% attendance + 70% assignment scores
         const assignmentScore = acceptedScore;
         const finalScore = (attendanceScore * 0.3) + (assignmentScore * 0.7);
@@ -331,12 +329,12 @@ class LeaderboardService {
         const finalScore = parseInt(user.finalScore) || baseScore;
         const hoursToSubmit = parseFloat(user.hoursToSubmit) || 0;
         const isLate = user.isLate || false;
-        
+
         // Calculate intelligent metrics
         const timeBonus = hoursToSubmit <= 24 ? 10 : (hoursToSubmit <= 48 ? 5 : 0); // Bonus for early submission
         const qualityBonus = baseScore >= 90 ? 15 : (baseScore >= 80 ? 10 : (baseScore >= 70 ? 5 : 0)); // Quality bonus
         const latePenalty = isLate ? 10 : 0; // Late penalty
-        
+
         const intelligentScore = finalScore + timeBonus + qualityBonus - latePenalty;
 
         return {
