@@ -22,7 +22,7 @@ const verificationLimiter = rateLimit({
 // Rate limiter for login attempts
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 login attempts per 15 minutes
+  max: 20, // limit each IP to 20 login attempts per 15 minutes
   message: {
     error: 'Too many login attempts',
     message: 'Too many login attempts from this IP. Please try again in 15 minutes.'

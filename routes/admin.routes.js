@@ -48,6 +48,7 @@ router.put('/submissions/:id/review', [
 // Admin users routes
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/activate', adminController.toggleUserStatus);
+router.patch('/users/:id/verify', adminController.verifyUser);
 router.get('/users/:id', adminController.getUserDetails);
 
 // Admin assignments routes

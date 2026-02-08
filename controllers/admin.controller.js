@@ -140,6 +140,17 @@ class AdminController {
     }
   }
 
+  // Verify user manually
+  async verifyUser(req, res) {
+    try {
+      const user = await adminService.verifyUser(req.params.id);
+      res.json(user);
+    } catch (error) {
+      console.error('Error in verifyUser controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
   // Get user details with full statistics
   async getUserDetails(req, res) {
     try {
@@ -276,15 +287,15 @@ class AdminController {
   async testEmail(req, res) {
     try {
       const { to, subject, message } = req.body;
-      
+
       if (!to || !subject || !message) {
-        return res.status(400).json({ 
-          message: 'Missing required fields: to, subject, message' 
+        return res.status(400).json({
+          message: 'Missing required fields: to, subject, message'
         });
       }
 
       const { sendEmail } = require('../utils/email');
-      
+
       const emailResult = await sendEmail({
         to,
         subject,

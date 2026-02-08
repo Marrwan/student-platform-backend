@@ -75,7 +75,7 @@ class AdminService {
       if (status) where.status = status;
       if (type) where.type = type;
       const offset = (parseInt(page) - 1) * parseInt(limit);
-      
+
       const { count, rows } = await Payment.findAndCountAll({
         where,
         include: [
@@ -86,7 +86,7 @@ class AdminService {
         limit: parseInt(limit),
         offset: offset
       });
-      
+
       return {
         data: rows,
         total: count,
@@ -244,7 +244,7 @@ class AdminService {
   async getSubmissions(params) {
     try {
       const { status, projectId, page = 1, limit = 20 } = params;
-      
+
       const where = {};
       if (status) where.status = status;
       if (projectId) where.projectId = projectId;
@@ -330,7 +330,7 @@ class AdminService {
   async getUsers(params) {
     try {
       const { role, isActive, page = 1, limit = 20 } = params;
-      
+
       const where = {};
       if (role) where.role = role;
       if (isActive !== undefined) where.isActive = isActive === 'true';
@@ -340,7 +340,7 @@ class AdminService {
       const users = await User.findAndCountAll({
         where,
         attributes: [
-          'id', 'firstName', 'lastName', 'email', 'role', 'isActive', 
+          'id', 'firstName', 'lastName', 'email', 'role', 'isActive',
           'totalScore', 'completedProjects', 'streakCount', 'createdAt'
         ],
         order: [['createdAt', 'DESC']],
@@ -392,6 +392,42 @@ class AdminService {
       return user;
     } catch (error) {
       console.error('Error updating user status:', error);
+      throw error;
+    }
+  }
+
+  // Verify user manually (admin override)
+  async verifyUser(userId) {
+    try {
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      await user.update({
+        emailVerified: true,
+        isActive: true // Also activate the user so they can login immediately
+      });
+
+      // Send email notification
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Account Verified',
+          html: `
+            <h2>Account Verified</h2>
+            <p>Your account has been manually verified by an administrator.</p>
+            <p>You can now log in to the platform.</p>
+          `
+        });
+      } catch (emailError) {
+        console.warn('Failed to send verification email:', emailError);
+        // Don't fail the verification process if email fails
+      }
+
+      return user;
+    } catch (error) {
+      console.error('Error verifying user:', error);
       throw error;
     }
   }
@@ -457,7 +493,7 @@ class AdminService {
       if (!assignment) {
         throw new Error('Assignment not found');
       }
-      
+
       await assignment.update(updateData);
       return { message: 'Assignment updated successfully', assignment };
     } catch (err) {
@@ -471,15 +507,15 @@ class AdminService {
     try {
       const { level, status } = params;
       const whereClause = {};
-      
+
       if (level && level !== 'all') {
         whereClause.level = level;
       }
-      
+
       if (status && status !== 'all') {
         whereClause.isActive = status === 'active';
       }
-      
+
       const classes = await Class.findAll({
         where: whereClause,
         include: [
@@ -493,18 +529,18 @@ class AdminService {
       // Add computed fields to each class
       const classesWithStats = await Promise.all(classes.map(async (cls) => {
         const classData = cls.toJSON();
-        
+
         // Use actual level from database, fallback to 'beginner' if not set
         classData.level = classData.level || 'beginner';
         classData.currentStudents = cls.enrollments ? cls.enrollments.length : 0;
         classData.assignments = cls.assignments ? cls.assignments.length : 0;
         classData.instructorName = cls.instructor ? `${cls.instructor.firstName} ${cls.instructor.lastName}` : 'Unknown';
-        
+
         // Calculate completion rate and average score from enrollments
         let totalProgress = 0;
         let totalScore = 0;
         let activeEnrollments = 0;
-        
+
         if (cls.enrollments) {
           cls.enrollments.forEach(enrollment => {
             if (enrollment.status === 'active') {
@@ -514,10 +550,10 @@ class AdminService {
             }
           });
         }
-        
+
         classData.completionRate = activeEnrollments > 0 ? Math.round(totalProgress / activeEnrollments) : 0;
         classData.averageScore = activeEnrollments > 0 ? Math.round(totalScore / activeEnrollments) : 0;
-        
+
         return classData;
       }));
 
@@ -571,7 +607,7 @@ class AdminService {
   async sendClassInvitations(classId, invitationData) {
     try {
       const { emails, message } = invitationData;
-      
+
       // Validate class exists
       const classData = await Class.findByPk(classId);
       if (!classData) {
@@ -584,12 +620,12 @@ class AdminService {
       }
 
       const results = [];
-      
+
       for (const email of emails) {
         try {
           // Check if user already exists
           let user = await User.findOne({ where: { email } });
-          
+
           if (!user) {
             // Create new user account
             user = await User.create({
@@ -644,7 +680,7 @@ class AdminService {
                 </div>
               `
             });
-            
+
             if (!emailResult.success) {
               console.warn(`Failed to send email to ${email}:`, emailResult.error);
             }
@@ -660,7 +696,7 @@ class AdminService {
         }
       }
 
-      return { 
+      return {
         message: 'Invitation processing completed',
         results,
         totalProcessed: emails.length,
