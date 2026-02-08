@@ -7,10 +7,14 @@ class AuthController {
       const result = await authService.register(req.body);
       res.status(201).json(result);
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(400).json({ 
+      console.error('Registration error details:', {
+        message: error.message,
+        stack: error.stack,
+        body: { ...req.body, password: '[REDACTED]' }
+      });
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -22,9 +26,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Email verification error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -36,9 +40,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Resend verification error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -49,21 +53,25 @@ class AuthController {
       const result = await authService.login(req.body);
       res.json(result);
     } catch (error) {
-      console.error('Login error:', error);
-      
+      console.error('Login error details:', {
+        message: error.message,
+        stack: error.stack,
+        email: req.body.email
+      });
+
       // Handle needsVerification case
       if (error.needsVerification) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
           message: error.message,
           needsVerification: true,
           email: error.email
         });
       }
-      
-      res.status(400).json({ 
+
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -75,9 +83,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Forgot password error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -89,9 +97,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Reset password error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -103,9 +111,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Get current user error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -117,9 +125,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Get profile error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -131,9 +139,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Update profile error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -145,9 +153,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Change password error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -159,9 +167,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Update notifications error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -173,9 +181,9 @@ class AuthController {
       res.json(result);
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        message: error.message 
+        message: error.message
       });
     }
   }
