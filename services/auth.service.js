@@ -52,6 +52,10 @@ class AuthService {
           <p>If you didn't create this account, please ignore this email.</p>
           <p>Best regards,<br>The JavaScript Learning Platform Team</p>
         `
+
+      }).catch(err => {
+        console.warn('Failed to send verification email during registration:', err.message);
+        // Continue with registration even if email fails - user can resend later or admin can verify
       });
 
       return {
@@ -72,11 +76,11 @@ class AuthService {
         throw new Error('Verification code is required.');
       }
 
-      const user = await User.findOne({ 
-        where: { 
+      const user = await User.findOne({
+        where: {
           emailVerificationToken: token,
           emailVerified: false
-        } 
+        }
       });
 
       if (!user) {
@@ -139,23 +143,23 @@ class AuthService {
       // Normalize email (trim whitespace and convert to lowercase)
       const normalizedEmail = email.trim().toLowerCase();
 
-      const user = await User.findOne({ 
-        where: { 
-          email: normalizedEmail 
-        } 
+      const user = await User.findOne({
+        where: {
+          email: normalizedEmail
+        }
       });
-      
+
       if (!user) {
         // For security reasons, don't reveal if user exists or not
-        console.log(`Resend verification requested for non-existent email: ${normalizedEmail}`);
-        return { 
-          message: 'If an account with that email exists and is not verified, a verification code has been sent.' 
+        console.log(`Resend verification requested for non - existent email: ${normalizedEmail}`);
+        return {
+          message: 'If an account with that email exists and is not verified, a verification code has been sent.'
         };
       }
 
       if (user.emailVerified) {
-        return { 
-          message: 'This email is already verified. You can now log in to your account.' 
+        return {
+          message: 'This email is already verified. You can now log in to your account.'
         };
       }
 
@@ -191,10 +195,13 @@ class AuthService {
           <p>If you didn't request this code, please ignore this email.</p>
           <p>Best regards,<br>The JavaScript Learning Platform Team</p>
         `
+      }).catch(err => {
+        console.warn('Failed to send verification email during resend:', err.message);
+        // Continue even if email fails
       });
 
-      return { 
-        message: 'Verification code sent successfully! Please check your email for the 6-digit code.' 
+      return {
+        message: 'Verification code sent successfully! Please check your email for the 6-digit code.'
       };
     } catch (error) {
       console.error('Resend verification error:', error);
@@ -321,10 +328,10 @@ class AuthService {
       }
 
       const user = await User.findOne({ where: { email } });
-      
+
       // For security reasons, always return success message even if user doesn't exist
       if (!user) {
-        console.log(`Password reset requested for non-existent email: ${email}`);
+        console.log(`Password reset requested for non - existent email: ${email} `);
         return { message: 'If an account with that email exists, a password reset link has been sent.' };
       }
 
@@ -339,7 +346,7 @@ class AuthService {
 
       // Send reset email
       const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-      
+
       try {
         await sendEmail({
           to: email,
@@ -449,13 +456,13 @@ class AuthService {
         throw new Error('User not found.');
       }
 
-      await user.update({ 
-        firstName, 
-        lastName, 
-        bio, 
-        githubUsername, 
-        linkedinUrl, 
-        avatar 
+      await user.update({
+        firstName,
+        lastName,
+        bio,
+        githubUsername,
+        linkedinUrl,
+        avatar
       });
 
       return {
@@ -524,7 +531,7 @@ class AuthService {
 
       await user.update({ emailNotifications, pushNotifications });
 
-      return { 
+      return {
         message: 'Notification settings updated successfully.',
         settings: { emailNotifications, pushNotifications }
       };
@@ -541,7 +548,7 @@ class AuthService {
       if (user) {
         await user.update({ lastLogout: new Date() });
       }
-      
+
       return { message: 'Logged out successfully.' };
     } catch (error) {
       console.error('Logout error:', error);

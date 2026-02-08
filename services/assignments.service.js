@@ -1430,6 +1430,60 @@ class AssignmentsService {
       throw error;
     }
   }
+
+  // Resend assignment notification (admin only)
+  async resendAssignmentNotification(assignmentId, userId, userRole) {
+    try {
+      const assignment = await Assignment.findByPk(assignmentId, {
+        include: [{ model: Class, as: 'class' }]
+      });
+
+      if (!assignment) {
+        throw new Error('Assignment not found');
+      }
+
+      // Check if user has access to this assignment
+      if (assignment.class.instructorId !== userId && userRole !== 'admin') {
+        throw new Error('Access denied');
+      }
+
+      // Send notification emails to enrolled students
+      const enrollments = await ClassEnrollment.findAll({
+        where: { classId: assignment.classId },
+        include: [{ model: User, as: 'student', attributes: ['email', 'firstName', 'lastName'] }]
+      });
+
+      let sentCount = 0;
+      for (const enrollment of enrollments) {
+        try {
+          await sendEmail({
+            to: enrollment.student.email,
+            subject: `Reminder: New Assignment - ${assignment.title}`,
+            html: `
+              <h2>Assignment Reminder</h2>
+              <p>This is a reminder about the following assignment:</p>
+              <p><strong>Class:</strong> ${assignment.class.name}</p>
+              <p><strong>Assignment:</strong> ${assignment.title}</p>
+              <p><strong>Deadline:</strong> ${assignment.deadline.toLocaleString()}</p>
+              <p><strong>Max Score:</strong> ${assignment.maxScore} points</p>
+              <p>Log in to your dashboard to view the full assignment details and submit your work.</p>
+            `
+          });
+          sentCount++;
+        } catch (emailError) {
+          console.warn(`Failed to send reminder email to ${enrollment.student.email}:`, emailError.message);
+        }
+      }
+
+      return {
+        message: `Notification resent successfully to ${sentCount} students`,
+        sentCount
+      };
+    } catch (error) {
+      console.error('Error resending assignment notification:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AssignmentsService(); 

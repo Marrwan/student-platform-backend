@@ -55,6 +55,7 @@ router.get('/users/:id', adminController.getUserDetails);
 router.get('/assignments', adminController.getAssignments);
 router.post('/assignments', adminController.createAssignment);
 router.put('/assignments/:id', adminController.updateAssignment);
+router.post('/assignments/:id/notify', adminController.resendAssignmentNotification);
 
 // Admin classes routes
 router.get('/classes', adminController.getClasses);

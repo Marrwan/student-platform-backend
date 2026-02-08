@@ -12,6 +12,8 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    connectionTimeout: 5000, // 5 seconds
+    socketTimeout: 5000,    // 5 seconds
   });
 };
 
@@ -190,7 +192,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     }
 
     const transporter = createTransporter();
-    
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,

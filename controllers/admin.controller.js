@@ -322,6 +322,34 @@ class AdminController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // Resend assignment notification
+  async resendAssignmentNotification(req, res) {
+    try {
+      const { assignmentsService } = require('../services/assignments.service'); // Dynamic import to avoid circular dependency if any, or just require at top if safe. Actually assignmentsService is not imported at top of admin.controller. Let's start with require.
+      // Wait, admin.controller uses adminService. Does it use assignmentsService? No. 
+      // I should probably add this method to adminService instead? 
+      // The plan said "Call the service method". 
+      // Let's import assignmentsService at the top or use adminService as a proxy?
+      // existing code uses adminService. 
+      // Let's check adminService to see if it delegates to assignmentsService.
+      // Actually, looking at admin.service.js (I haven't viewed it fully but viewed admin.controller which calls adminService), 
+      // it seems acceptable to add strict assignment logic to assignmentsService and call it from here.
+      // BUT admin.controller usually calls admin.service.
+      // Let's implement it in admin.service to keep pattern consistent, OR just call assignmentsService directly.
+      // Given the previous file read of admin.controller, it only imports adminService.
+      // I'll stick to the plan: modify admin.controller to call the *service method*. 
+      // But which service? The plan said "assignments.service.js".
+
+      // So I will import assignmentsService in admin.controller.
+      const assignmentsService = require('../services/assignments.service');
+      const result = await assignmentsService.resendAssignmentNotification(req.params.id, req.user.id, req.user.role);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in resendAssignmentNotification controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
 }
 
 module.exports = new AdminController(); 
