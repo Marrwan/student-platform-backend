@@ -335,6 +335,17 @@ class AdminController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // Update user (admin)
+  async updateUser(req, res) {
+    try {
+      const result = await adminService.updateUser(req.params.id, req.body, req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in updateUser controller:', error);
+      res.status(400).json({ message: error.message });
+    }
+  }
 }
 
 module.exports = new AdminController(); 

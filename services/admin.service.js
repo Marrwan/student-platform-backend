@@ -897,6 +897,100 @@ class AdminService {
       throw new Error('Failed to fetch quick submissions');
     }
   }
+
+  // Update user (admin)
+  async updateUser(userId, updateData, adminId) {
+    try {
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Prevent admin from changing their own role to non-admin unless another admin exists
+      if (userId === adminId && updateData.role && updateData.role !== 'admin') {
+        const adminCount = await User.count({ where: { role: 'admin', isActive: true } });
+        if (adminCount <= 1) {
+          throw new Error('Cannot change your own role. You are the last admin.');
+        }
+      }
+
+      // Check if email is being changed and if it's already taken
+      if (updateData.email && updateData.email !== user.email) {
+        const normalizedEmail = updateData.email.trim().toLowerCase();
+        const existingUser = await User.findOne({ where: { email: normalizedEmail } });
+        if (existingUser && existingUser.id !== userId) {
+          throw new Error('Email already in use by another user');
+        }
+        updateData.email = normalizedEmail;
+      }
+
+      // Handle password update - hash if provided
+      if (updateData.password) {
+        // Password will be hashed by the User model's beforeSave hook
+        // Just validate minimum length
+        if (updateData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+      }
+
+      // Build the update object with only provided fields
+      const fieldsToUpdate = {};
+      const allowedFields = ['firstName', 'lastName', 'email', 'role', 'isActive', 'emailVerified', 'password'];
+
+      allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+          fieldsToUpdate[field] = updateData[field];
+        }
+      });
+
+      // Update user
+      await user.update(fieldsToUpdate);
+
+      // Send notification email about changes
+      const changes = [];
+      if (updateData.firstName || updateData.lastName) changes.push('name');
+      if (updateData.email) changes.push('email');
+      if (updateData.password) changes.push('password');
+      if (updateData.role) changes.push('role');
+      if (updateData.isActive !== undefined) changes.push('account status');
+      if (updateData.emailVerified !== undefined) changes.push('email verification status');
+
+      if (changes.length > 0) {
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: 'Account Updated by Administrator',
+            html: `
+              <h2>Account Update Notification</h2>
+              <p>Your account has been updated by an administrator.</p>
+              <p><strong>Changes made:</strong> ${changes.join(', ')}</p>
+              ${updateData.password ? '<p><strong>Your password has been reset.</strong> Please use your new password to log in.</p>' : ''}
+              ${updateData.role ? `<p><strong>New role:</strong> ${updateData.role}</p>` : ''}
+              ${updateData.isActive === false ? '<p><strong>Your account has been deactivated.</strong></p>' : ''}
+              ${updateData.isActive === true ? '<p><strong>Your account has been activated.</strong></p>' : ''}
+              <p>If you have any questions, please contact support.</p>
+            `
+          });
+        } catch (emailError) {
+          console.warn('Failed to send update notification email:', emailError);
+          // Don't fail the update if email fails
+        }
+      }
+
+      // Return updated user without password
+      const updatedUser = await User.findByPk(userId, {
+        attributes: { exclude: ['password'] }
+      });
+
+      return {
+        message: 'User updated successfully',
+        user: updatedUser
+      };
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AdminService(); 
