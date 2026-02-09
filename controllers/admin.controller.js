@@ -339,6 +339,7 @@ class AdminController {
   // Update user (admin)
   async updateUser(req, res) {
     try {
+      console.log('updateUser called with:', { userId: req.params.id, body: req.body, adminId: req.user.id });
       const result = await adminService.updateUser(req.params.id, req.body, req.user.id);
       res.json(result);
     } catch (error) {

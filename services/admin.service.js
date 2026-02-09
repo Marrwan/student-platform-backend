@@ -907,7 +907,7 @@ class AdminService {
       }
 
       // Prevent admin from changing their own role to non-admin unless another admin exists
-      if (userId === adminId && updateData.role && updateData.role !== 'admin') {
+      if (String(userId) === String(adminId) && updateData.role && updateData.role !== 'admin') {
         const adminCount = await User.count({ where: { role: 'admin', isActive: true } });
         if (adminCount <= 1) {
           throw new Error('Cannot change your own role. You are the last admin.');
