@@ -339,6 +339,14 @@ class AdminController {
   // Update user (admin)
   async updateUser(req, res) {
     try {
+      // Check for validation errors
+      const { validationResult } = require('express-validator');
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
+        return res.status(400).json({ errors: errors.array(), message: 'Validation failed' });
+      }
+
       console.log('updateUser called with:', { userId: req.params.id, body: req.body, adminId: req.user.id });
       const result = await adminService.updateUser(req.params.id, req.body, req.user.id);
       res.json(result);
