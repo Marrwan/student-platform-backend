@@ -122,65 +122,66 @@ module.exports = (sequelize) => {
     ]
   });
 
-  Assignment.prototype.isOverdue = function() {
+  Assignment.prototype.isOverdue = function () {
     return new Date() > this.deadline;
   };
 
-  Assignment.prototype.isDueToday = function() {
+  Assignment.prototype.isDueToday = function () {
     const today = new Date();
     const deadline = new Date(this.deadline);
     return today.toDateString() === deadline.toDateString();
   };
 
-  Assignment.prototype.getTimeRemaining = function() {
+  Assignment.prototype.getTimeRemaining = function () {
     const now = new Date();
     const timeRemaining = this.deadline - now;
     return timeRemaining > 0 ? timeRemaining : 0;
   };
 
-  Assignment.prototype.canSubmit = function() {
+  Assignment.prototype.canSubmit = function () {
     if (!this.isActive) return false;
-    
+
     const now = new Date();
     const startDate = new Date(this.startDate);
-    
-    // Cannot submit before start time
-    if (now < startDate) return false;
-    
+
+    // Cannot submit before start time - use timestamp comparison for reliability
+    if (now.getTime() < startDate.getTime()) return false;
+
     // If late submissions are allowed, can submit anytime after start
     if (this.allowLateSubmission) {
       return true;
     }
-    
+
     // If late submissions are not allowed, can only submit before deadline
-    return now <= this.deadline;
+    const deadline = new Date(this.deadline);
+    return now.getTime() <= deadline.getTime();
   };
 
-  Assignment.prototype.isAvailable = function() {
+  Assignment.prototype.isAvailable = function () {
     if (!this.isActive) return false;
-    
+
     // Students can access assignment details at any time
     return true;
   };
 
-  Assignment.prototype.getStatus = function() {
+  Assignment.prototype.getStatus = function () {
     if (!this.isActive) return 'inactive';
-    
+
     const now = new Date();
     const startDate = new Date(this.startDate);
     const deadline = new Date(this.deadline);
-    
+
     if (now < startDate) return 'not_started';
     if (now > deadline) return 'overdue';
     return 'active';
   };
 
-  Assignment.prototype.calculateLatePenalty = function(submittedAt) {
+  Assignment.prototype.calculateLatePenalty = function (submittedAt) {
     if (!this.allowLateSubmission || submittedAt <= this.deadline) return 0;
-    
+
     const hoursLate = (submittedAt - this.deadline) / (1000 * 60 * 60);
     if (this.maxLateHours && hoursLate > this.maxLateHours) return this.maxScore;
-    
+
     return Math.min(this.latePenalty * hoursLate, this.maxScore);
   };
 
