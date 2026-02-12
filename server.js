@@ -26,6 +26,7 @@ const hrmsRoutes = require('./routes/hrms.routes');
 const appraisalRoutes = require('./routes/appraisals.routes');
 const payrollRoutes = require('./routes/payroll.routes');
 const rbacRoutes = require('./routes/rbac.routes');
+const standupRoutes = require('./routes/standup.routes');
 
 const app = express();
 
@@ -185,8 +186,12 @@ app.use('/api/hrms', hrmsRoutes);
 app.use('/api/appraisals', appraisalRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/rbac', rbacRoutes);
+app.use('/api/standups', standupRoutes);
+app.use('/api/portfolio', require('./routes/portfolio.routes'));
+app.use('/api/performance', require('./routes/performance.routes'));
+app.use('/api/gamification', require('./routes/gamification.routes'));
 
-// Health check endpoint
+// Error handling middlewarendpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
