@@ -12,8 +12,8 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    connectionTimeout: 5000, // 5 seconds
-    socketTimeout: 5000,    // 5 seconds
+    connectionTimeout: 30000, // 30 seconds
+    socketTimeout: 30000,    // 30 seconds
   });
 };
 
