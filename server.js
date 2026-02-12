@@ -25,8 +25,19 @@ const weeklyAttendanceRoutes = require('./routes/weeklyAttendance.routes');
 const hrmsRoutes = require('./routes/hrms.routes');
 const appraisalRoutes = require('./routes/appraisals.routes');
 const payrollRoutes = require('./routes/payroll.routes');
+const rbacRoutes = require('./routes/rbac.routes');
 
 const app = express();
+
+// Request Duration Logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${req.method}] ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
+  });
+  next();
+});
 
 // Security middleware
 app.use(helmet({
@@ -173,6 +184,7 @@ app.use('/api/weekly-attendance', weeklyAttendanceRoutes);
 app.use('/api/hrms', hrmsRoutes);
 app.use('/api/appraisals', appraisalRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/rbac', rbacRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

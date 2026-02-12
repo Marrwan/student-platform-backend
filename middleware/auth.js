@@ -10,7 +10,15 @@ const authenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Performance logging
+    const dbStart = Date.now();
     const user = await User.findByPk(decoded.id);
+    const dbDuration = Date.now() - dbStart;
+
+    if (dbDuration > 500) {
+      console.log(`[SLOW DB] User.findByPk took ${dbDuration}ms for user ${decoded.id}`);
+    }
 
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Invalid token or user inactive.' });

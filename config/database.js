@@ -8,9 +8,9 @@ module.exports = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: console.log,
+    logging: false, // console.log, // Disable logging to improve performance
     pool: {
-      max: 5,
+      max: 20, // Increased from 5 to handle dashboard concurrency
       min: 0,
       acquire: 30000,
       idle: 10000

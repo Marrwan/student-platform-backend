@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-    const Department = sequelize.define('Department', {
+    const Team = sequelize.define('Team', {
         id: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
@@ -18,7 +18,15 @@ module.exports = (sequelize) => {
         description: {
             type: DataTypes.TEXT
         },
-        headOfDepartmentId: {
+        departmentId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: {
+                model: 'Departments',
+                key: 'id'
+            }
+        },
+        leadId: {
             type: DataTypes.UUID,
             allowNull: true,
             references: {
@@ -26,30 +34,31 @@ module.exports = (sequelize) => {
                 key: 'id'
             }
         },
-        location: {
-            type: DataTypes.STRING,
-            defaultValue: 'Headquarters'
-        },
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true
         }
+    }, {
+        indexes: [
+            { fields: ['departmentId'] },
+            { fields: ['leadId'] }
+        ]
     });
 
-    Department.associate = (models) => {
-        Department.belongsTo(models.User, {
-            foreignKey: 'headOfDepartmentId',
-            as: 'headOfDepartment'
-        });
-        Department.hasMany(models.User, {
+    Team.associate = (models) => {
+        Team.belongsTo(models.Department, {
             foreignKey: 'departmentId',
-            as: 'employees'
+            as: 'department'
         });
-        Department.hasMany(models.Team, {
-            foreignKey: 'departmentId',
-            as: 'teams'
+        Team.belongsTo(models.User, {
+            foreignKey: 'leadId',
+            as: 'lead'
+        });
+        Team.hasMany(models.User, {
+            foreignKey: 'teamId',
+            as: 'members'
         });
     };
 
-    return Department;
+    return Team;
 };

@@ -1,9 +1,8 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+const { User, Role, Permission, sequelize } = require('../models');
 const { sendEmail } = require('../utils/email');
-const { sequelize } = require('../models'); // Added sequelize import
 
 class AuthService {
   // Register user
@@ -214,19 +213,18 @@ class AuthService {
     try {
       const { email, password, verificationOtp } = loginData;
 
-      // Check database connection
-      try {
-        await sequelize.authenticate();
-      } catch (dbError) {
-        console.error('Database connection error:', dbError);
-        throw new Error('Service temporarily unavailable. Please try again in a few minutes.');
-      }
-
       // Normalize email (trim whitespace and convert to lowercase)
       const normalizedEmail = email.trim().toLowerCase();
 
       // Find user by email
-      const user = await User.findOne({ where: { email: normalizedEmail } });
+      let user;
+      try {
+        user = await User.findOne({ where: { email: normalizedEmail } });
+      } catch (findError) {
+        console.error('Error finding user:', findError);
+        throw new Error('Database error during user lookup.');
+      }
+
       if (!user) {
         throw new Error('Invalid credentials.');
       }
@@ -301,6 +299,50 @@ class AuthService {
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
+      // Fetch roles and permissions for the response
+      const userWithRoles = await User.findByPk(user.id, {
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+            include: [{ model: Permission, as: 'permissions' }]
+          },
+          {
+            model: Permission,
+            as: 'userPermissions'
+          }
+        ]
+      });
+
+      // Flatten permissions for frontend
+      const resolvedPermissions = new Set();
+
+      // Add permissions from roles
+      if (userWithRoles.roles) {
+        userWithRoles.roles.forEach(role => {
+          if (role.permissions) {
+            role.permissions.forEach(p => resolvedPermissions.add(p.name));
+          }
+        });
+      }
+
+      // Add direct permissions
+      if (userWithRoles.userPermissions) {
+        userWithRoles.userPermissions.forEach(p => resolvedPermissions.add(p.name));
+      }
+
+      // Add legacy permissions (partial admin)
+      if (user.role === 'partial_admin' && user.permissions) {
+        Object.keys(user.permissions).forEach(k => {
+          if (user.permissions[k]) resolvedPermissions.add(k);
+        });
+      }
+
+      // Super admin gets *all* permissions (or a wildcard)
+      // For frontend simplicity, if super admin, we might just return a flag or all known permissions
+      // But let's stick to what we have. If role is 'admin' or has 'Super Admin' role, backend allows everything.
+      // Frontend can check `isAdmin` flag.
+
       return {
         success: true,
         message: 'Login successful',
@@ -310,8 +352,10 @@ class AuthService {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role,
-          permissions: user.permissions
+          role: user.role, // Legacy role for backward compatibility
+          roles: userWithRoles.roles ? userWithRoles.roles.map(r => r.name) : [],
+          permissions: Array.from(resolvedPermissions), // List of permission names
+          departmentId: user.departmentId
         }
       };
     } catch (error) {

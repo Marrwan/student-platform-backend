@@ -145,6 +145,24 @@ module.exports = (sequelize) => {
     location: {
       type: DataTypes.STRING
     },
+    // Team Association
+    teamId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'Teams',
+        key: 'id'
+      }
+    },
+    // Status
+    onLeave: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    isOnSuspension: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
     joinedAt: {
       type: DataTypes.DATE
     }
@@ -238,6 +256,10 @@ module.exports = (sequelize) => {
       foreignKey: 'departmentId',
       as: 'department'
     });
+    User.belongsTo(models.Team, {
+      foreignKey: 'teamId',
+      as: 'team'
+    });
     User.belongsTo(models.User, {
       foreignKey: 'managerId',
       as: 'manager'
@@ -254,6 +276,46 @@ module.exports = (sequelize) => {
       foreignKey: 'reviewerId',
       as: 'reviewsToConduct'
     });
+
+    // RBAC Associations
+    User.belongsToMany(models.Role, {
+      through: 'UserRole',
+      foreignKey: 'userId',
+      as: 'roles'
+    });
+    User.belongsToMany(models.Permission, {
+      through: 'UserPermission',
+      foreignKey: 'userId',
+      as: 'userPermissions'
+    });
+  };
+
+  // Helper to check if user has a specific permission (either directly or via roles)
+  User.prototype.hasPermissionTo = async function (permissionName) {
+    // Super admin check (legacy role string or new role)
+    if (this.role === 'admin') return true;
+
+    // Check direct user permissions if loaded
+    if (this.userPermissions && this.userPermissions.some(p => p.name === permissionName)) {
+      return true;
+    }
+
+    // Check role permissions if loaded
+    if (this.roles) {
+      for (const role of this.roles) {
+        if (role.name === 'Super Admin') return true; // Hardcoded super admin check
+        if (role.permissions && role.permissions.some(p => p.name === permissionName)) {
+          return true;
+        }
+      }
+    }
+
+    // Fallback to legacy check if new system data isn't loaded/migrated yet
+    if (this.role === 'partial_admin' && this.permissions && this.permissions[permissionName]) {
+      return true;
+    }
+
+    return false;
   };
 
   return User;

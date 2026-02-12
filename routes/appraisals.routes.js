@@ -1,22 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const appraisalController = require('../controllers/appraisals.controller');
-const { auth, isAdmin, isStaff } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
+const { hasPermission, hasRole } = require('../middleware/has-permission.middleware');
 
 // Cycles
-router.post('/cycles', [auth, isAdmin], appraisalController.createCycle);
-router.get('/cycles', [auth, isStaff], appraisalController.getAllCycles);
+router.post('/cycles', [auth, hasPermission('hrms.manage_appraisals')], appraisalController.createCycle);
+router.get('/cycles', [auth, hasPermission('hrms.view_dashboard')], appraisalController.getAllCycles);
 
 // Appraisals
-router.post('/', [auth, isStaff], appraisalController.initiateAppraisal); // Admin or Supervisor or Self?
-router.get('/my', [auth, isStaff], appraisalController.getMyAppraisals);
-router.get('/:id', [auth, isStaff], appraisalController.getAppraisalDetails);
+router.post('/', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.initiateAppraisal);
+router.get('/my', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.getMyAppraisals);
+router.get('/:id', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.getAppraisalDetails);
 
 // Objectives
-router.post('/:appraisalId/objectives', [auth, isStaff], appraisalController.addObjective);
+router.post('/:appraisalId/objectives', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.addObjective);
 
 // Key Results
-router.post('/objectives/:objectiveId/key-results', [auth, isStaff], appraisalController.addKeyResult);
-router.put('/key-results/:id/score', [auth, isStaff], appraisalController.updateKeyResultScore);
+router.post('/objectives/:objectiveId/key-results', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.addKeyResult);
+router.put('/key-results/:id/score', [auth, hasRole('Staff', 'Admin', 'Super Admin')], appraisalController.updateKeyResultScore);
 
 module.exports = router;
