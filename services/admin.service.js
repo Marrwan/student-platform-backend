@@ -255,7 +255,22 @@ class AdminService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email']
+            attributes: ['id', 'firstName', 'lastName', 'email'],
+            include: [
+              {
+                model: ClassEnrollment,
+                as: 'enrollments',
+                where: { status: 'active' },
+                required: false, // Don't filter out users without active enrollments
+                include: [
+                  {
+                    model: Class,
+                    as: 'class',
+                    attributes: ['name']
+                  }
+                ]
+              }
+            ]
           },
           {
             model: Project,
@@ -268,8 +283,19 @@ class AdminService {
         offset: (parseInt(page) - 1) * parseInt(limit)
       });
 
+      // Map to flatten structure and include className
+      const flattenedRows = submissions.rows.map(sub => {
+        const subJson = sub.toJSON();
+        // Get class name from first active enrollment, or 'Unassigned'
+        const className = subJson.user?.enrollments?.[0]?.class?.name || 'Unassigned';
+        return {
+          ...subJson,
+          className
+        };
+      });
+
       return {
-        data: submissions.rows,
+        data: flattenedRows,
         total: submissions.count,
         page: parseInt(page),
         totalPages: Math.ceil(submissions.count / parseInt(limit))
