@@ -48,7 +48,7 @@ class SubmissionsController {
   // Delete submission (admin only)
   async deleteSubmission(req, res) {
     try {
-      const result = await submissionsService.deleteSubmission(req.params.id);
+      const result = await submissionsService.deleteSubmission(req.params.id, req.user);
       res.json(result);
     } catch (error) {
       console.error('Error in deleteSubmission controller:', error);

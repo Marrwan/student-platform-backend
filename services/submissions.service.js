@@ -7,35 +7,35 @@ class SubmissionsService {
   async submitProject(submissionData, user, file) {
     try {
       const { projectId, githubLink, codeContent } = submissionData;
-      
+
       // Check if project exists and is unlocked
       const project = await Project.findByPk(projectId);
       if (!project) {
         throw new Error('Project not found.');
       }
-      
+
       if (!project.isUnlocked) {
         throw new Error('This project is not yet unlocked.');
       }
-      
+
       // Check if project is overdue
       const now = new Date();
       const deadline = new Date(project.deadline);
       const isOverdue = now > deadline;
-      
+
       if (isOverdue) {
         throw new Error('This project is overdue and cannot be submitted.');
       }
-      
+
       // Check if user already submitted this project
       const existingSubmission = await Submission.findOne({
         where: { userId: user.id, projectId }
       });
-      
+
       if (existingSubmission) {
         throw new Error('You have already submitted this project.');
       }
-      
+
       // Validate submission type
       if (project.submissionType !== 'all') {
         if (project.submissionType === 'github' && !githubLink) {
@@ -48,7 +48,7 @@ class SubmissionsService {
           throw new Error('ZIP file upload is required for this project.');
         }
       }
-      
+
       // Check for plagiarism (code similarity)
       if (codeContent) {
         // Find all other submissions for this project
@@ -76,7 +76,7 @@ class SubmissionsService {
           throw new Error('Plagiarism detected. Submission rejected.');
         }
       }
-      
+
       // For late submissions, require payment before accepting
       if (isOverdue) {
         // Check if payment exists and is successful
@@ -85,7 +85,7 @@ class SubmissionsService {
           throw new Error('Late fee payment required before submitting overdue project.');
         }
       }
-      
+
       // Create submission
       const submissionDataToSave = {
         userId: user.id,
@@ -97,12 +97,12 @@ class SubmissionsService {
         isLate: false,
         status: 'pending'
       };
-      
+
       const submission = await Submission.create(submissionDataToSave);
-      
+
       // After creating the submission:
       await PlagiarismReport.update({ submissionId: submission.id }, { where: { submissionId: null, comparedSubmissionId: { [Op.ne]: null } } });
-      
+
       return {
         message: 'Project submitted successfully',
         submission
@@ -117,10 +117,10 @@ class SubmissionsService {
   async getUserSubmissions(userId, params) {
     try {
       const { page = 1, limit = 20, status } = params;
-      
+
       const whereClause = { userId };
       if (status) whereClause.status = status;
-      
+
       const submissions = await Submission.findAndCountAll({
         where: whereClause,
         include: [{
@@ -131,7 +131,7 @@ class SubmissionsService {
         limit: parseInt(limit),
         offset: (parseInt(page) - 1) * parseInt(limit)
       });
-      
+
       return {
         submissions: submissions.rows,
         total: submissions.count,
@@ -159,16 +159,16 @@ class SubmissionsService {
           }
         ]
       });
-      
+
       if (!submission) {
         throw new Error('Submission not found.');
       }
-      
+
       // Users can only view their own submissions unless they're admin
       if (user.role === 'user' && submission.userId !== user.id) {
         throw new Error('Access denied.');
       }
-      
+
       return submission;
     } catch (error) {
       console.error('Get submission error:', error);
@@ -180,18 +180,18 @@ class SubmissionsService {
   async updateSubmission(submissionId, updateData, adminUserId) {
     try {
       const { status, score, feedback, adminComments } = updateData;
-      
+
       const submission = await Submission.findByPk(submissionId, {
         include: [
           { model: User, attributes: ['id', 'name', 'email'] },
           { model: Project, attributes: ['id', 'title', 'day'] }
         ]
       });
-      
+
       if (!submission) {
         throw new Error('Submission not found.');
       }
-      
+
       await submission.update({
         status,
         score: score || 0,
@@ -200,7 +200,7 @@ class SubmissionsService {
         reviewedBy: adminUserId,
         reviewedAt: new Date()
       });
-      
+
       // Send email notification to user
       await sendEmail({
         to: submission.User.email,
@@ -214,7 +214,7 @@ class SubmissionsService {
           <p>Log in to your dashboard to view the full review.</p>
         `
       });
-      
+
       return submission;
     } catch (error) {
       console.error('Update submission error:', error);
@@ -222,14 +222,22 @@ class SubmissionsService {
     }
   }
 
-  // Delete submission (admin only)
-  async deleteSubmission(submissionId) {
+  // Delete submission (admin or owner)
+  async deleteSubmission(submissionId, user) {
     try {
       const submission = await Submission.findByPk(submissionId);
       if (!submission) {
         throw new Error('Submission not found.');
       }
-      
+
+      // Authorization check: User must be admin or the owner of the submission
+      const isAdmin = user.role === 'admin' || user.role === 'partial_admin';
+      const isOwner = submission.userId === user.id;
+
+      if (!isAdmin && !isOwner) {
+        throw new Error('Access denied. You can only delete your own submissions.');
+      }
+
       await submission.destroy();
       return { message: 'Submission deleted successfully' };
     } catch (error) {
@@ -246,12 +254,12 @@ class SubmissionsService {
       const acceptedSubmissions = await Submission.count({ where: { status: 'accepted' } });
       const rejectedSubmissions = await Submission.count({ where: { status: 'rejected' } });
       const lateSubmissions = await Submission.count({ where: { isLate: true } });
-      
+
       const averageScore = await Submission.findOne({
         where: { status: 'accepted' },
         attributes: [[require('sequelize').fn('AVG', require('sequelize').col('score')), 'averageScore']]
       });
-      
+
       return {
         totalSubmissions,
         pendingSubmissions,
@@ -270,10 +278,10 @@ class SubmissionsService {
   async getSubmissionsByProject(projectId, params) {
     try {
       const { page = 1, limit = 20, status } = params;
-      
+
       const whereClause = { projectId };
       if (status) whereClause.status = status;
-      
+
       const submissions = await Submission.findAndCountAll({
         where: whereClause,
         include: [
@@ -290,7 +298,7 @@ class SubmissionsService {
         limit: parseInt(limit),
         offset: (parseInt(page) - 1) * parseInt(limit)
       });
-      
+
       return {
         submissions: submissions.rows,
         total: submissions.count,

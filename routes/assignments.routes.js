@@ -118,6 +118,9 @@ router.put('/:id/submissions/:submissionId/review', authenticateToken, requireAd
   body('deductions').optional().isInt({ min: 0 }).withMessage('Deductions must be positive')
 ], assignmentsController.reviewSubmission);
 
+// Delete submission (admin or owner)
+router.delete('/:id/submissions/:submissionId', authenticateToken, assignmentsController.deleteSubmission);
+
 // Unlock assignment (admin only)
 router.post('/:id/unlock', authenticateToken, requireAdmin, assignmentsController.unlockAssignment);
 

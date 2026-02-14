@@ -105,6 +105,17 @@ class AssignmentsController {
     }
   }
 
+  // Delete submission (admin or owner)
+  async deleteSubmission(req, res) {
+    try {
+      const result = await assignmentsService.deleteSubmission(req.params.id, req.params.submissionId, req.user);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in deleteSubmission controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
   // Submit assignment
   async submitAssignment(req, res) {
     try {
@@ -185,10 +196,10 @@ class AssignmentsController {
 
       const { userId, score, notes } = req.body;
       const result = await assignmentsService.awardAttendanceScore(
-        req.params.classId, 
-        userId, 
-        score, 
-        notes, 
+        req.params.classId,
+        userId,
+        score,
+        notes,
         req.user.id
       );
       res.json(result);
@@ -241,8 +252,8 @@ class AssignmentsController {
 
       const { paymentReference, amount } = req.body;
       const result = await assignmentsService.processOverduePayment(
-        req.user.id, 
-        paymentReference, 
+        req.user.id,
+        paymentReference,
         amount
       );
       res.json(result);

@@ -290,6 +290,36 @@ class AssignmentsService {
     }
   }
 
+  // Delete submission (admin or owner)
+  async deleteSubmission(assignmentId, submissionId, user) {
+    try {
+      const submission = await AssignmentSubmission.findByPk(submissionId);
+
+      if (!submission) {
+        throw new Error('Submission not found');
+      }
+
+      if (submission.assignmentId !== assignmentId) {
+        throw new Error('Submission does not belong to this assignment');
+      }
+
+      // Authorization check: User must be admin or the owner of the submission
+      const isAdmin = user.role === 'admin' || user.role === 'partial_admin';
+      const isOwner = submission.userId === user.id;
+
+      if (!isAdmin && !isOwner) {
+        throw new Error('Access denied. You can only delete your own submissions.');
+      }
+
+      await submission.destroy();
+
+      return { message: 'Submission deleted successfully' };
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      throw error;
+    }
+  }
+
   // Delete assignment (admin only)
   async deleteAssignment(assignmentId, userId, userRole) {
     try {
