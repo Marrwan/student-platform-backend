@@ -229,6 +229,12 @@ class PaymentsService {
       throw error;
     }
   }
+  // Process webhook
+  async processWebhook(body, signature) {
+    // Import here to avoid circular dependency if PaystackService imports models
+    const PaystackService = require('../utils/paystack');
+    return await PaystackService.processWebhook(body, signature);
+  }
 }
 
 module.exports = new PaymentsService(); 

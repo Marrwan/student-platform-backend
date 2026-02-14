@@ -60,7 +60,7 @@ class PaystackService {
       );
 
       const transaction = response.data.data;
-      
+
       return {
         success: true,
         data: {
@@ -234,13 +234,13 @@ class PaystackService {
       switch (event) {
         case 'charge.success':
           return await this.handleSuccessfulCharge(data);
-        
+
         case 'transfer.success':
           return await this.handleSuccessfulTransfer(data);
-        
+
         case 'transfer.failed':
           return await this.handleFailedTransfer(data);
-        
+
         default:
           return {
             success: true,
@@ -260,12 +260,21 @@ class PaystackService {
   async handleSuccessfulCharge(data) {
     try {
       const { reference, amount, metadata } = data;
-      
+
       // Update payment record in database
       const { Payment } = require('../models');
-      
+
       const payment = await Payment.findOne({ where: { reference } });
       if (payment) {
+        // Idempotency check: If payment is already completed, return success immediately
+        if (payment.status === 'completed') {
+          return {
+            success: true,
+            message: 'Payment already processed',
+            paymentId: payment.id
+          };
+        }
+
         await payment.update({
           status: 'completed',
           amount: amount / 100, // Convert from kobo to naira
@@ -310,10 +319,10 @@ class PaystackService {
   async handleSuccessfulTransfer(data) {
     try {
       const { reference, amount, recipient } = data;
-      
+
       // Update transfer record in database
       const { Transfer } = require('../models');
-      
+
       const transfer = await Transfer.findOne({ where: { reference } });
       if (transfer) {
         await transfer.update({
@@ -340,10 +349,10 @@ class PaystackService {
   async handleFailedTransfer(data) {
     try {
       const { reference, failure_reason } = data;
-      
+
       // Update transfer record in database
       const { Transfer } = require('../models');
-      
+
       const transfer = await Transfer.findOne({ where: { reference } });
       if (transfer) {
         await transfer.update({
@@ -379,7 +388,7 @@ class PaystackService {
       );
 
       const transaction = response.data.data;
-      
+
       return {
         success: true,
         status: transaction.status,

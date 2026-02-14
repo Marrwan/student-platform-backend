@@ -24,4 +24,7 @@ router.get('/admin/all', authenticateToken, requireRole('admin'), paymentsContro
 // Get payment statistics
 router.get('/stats', authenticateToken, requireRole('admin'), paymentsController.getPaymentStats);
 
+// Paystack Webhook (No auth required, signature verified in controller/service)
+router.post('/webhook', paymentsController.handleWebhook);
+
 module.exports = router; 
