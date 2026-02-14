@@ -49,15 +49,24 @@ class PaymentsService {
       if (submissionId) metadata.submissionId = submissionId;
       if (assignmentId) metadata.assignmentId = assignmentId;
 
+      // Callback URL for redirect flow: Paystack redirects here after payment with ?reference=xxx
+      const frontendUrl = process.env.FRONTEND_URL || 'https://strangedevclass.netlify.app';
+      const callbackUrl = assignmentId
+        ? `${frontendUrl}/assignments/${assignmentId}`
+        : undefined;
+
       // Create Paystack payment
+      const paystackPayload = {
+        email: userEmail,
+        amount: amount * 100, // Paystack expects kobo
+        reference,
+        metadata: metadata,
+      };
+      if (callbackUrl) paystackPayload.callback_url = callbackUrl;
+
       const paystackRes = await axios.post(
         `${PAYSTACK_BASE_URL}/transaction/initialize`,
-        {
-          email: userEmail,
-          amount: amount * 100, // Paystack expects kobo
-          reference,
-          metadata: metadata,
-        },
+        paystackPayload,
         { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } }
       );
 
