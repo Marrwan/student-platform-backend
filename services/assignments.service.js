@@ -1,4 +1,4 @@
-const { User, Class, Assignment, AssignmentSubmission, ClassEnrollment, AttendanceScore, ClassLeaderboard, WeeklyAttendance, sequelize } = require('../models');
+const { User, Class, Assignment, AssignmentSubmission, ClassEnrollment, AttendanceScore, ClassLeaderboard, WeeklyAttendance, sequelize, Payment } = require('../models');
 const { Op } = require('sequelize');
 const { sendEmail } = require('../utils/email');
 
@@ -234,7 +234,28 @@ class AssignmentsService {
       });
 
       // Return null submission if not found (this is normal for new students)
-      return { submission: submission || null };
+      // Check if user has paid for this assignment (via late fee)
+      let hasPaid = false;
+      if (submission && submission.paymentStatus === 'paid') {
+        hasPaid = true;
+      } else {
+        // Check Payment table for successful late fee payment
+        const payment = await Payment.findOne({
+          where: {
+            userId,
+            status: 'success',
+            metadata: {
+              assignmentId: assignmentId
+            }
+          }
+        });
+        if (payment) hasPaid = true;
+      }
+
+      return {
+        submission: submission || null,
+        hasPaid
+      };
     } catch (error) {
       console.error('Error fetching my submission:', error);
       throw error;
@@ -436,11 +457,17 @@ class AssignmentsService {
 
       // Check if user has already submitted
       const existingSubmission = await AssignmentSubmission.findOne({
-        where: { assignmentId, userId: user.id }
+        where: { assignmentId, userId: user.id },
+        include: [{ model: Assignment, as: 'assignment' }]
       });
 
+      // Update existing submission logic (remains mostly same but add payment check for re-submission?)
       if (existingSubmission) {
-        // Update existing submission instead of deleting and recreating
+        // ... (existing update logic)
+        // If updating a blocked submission, we might need to check payment again, 
+        // but typically update is allowed if paying or fixing.
+        // Let's keep the existing update logic for now, but ensure late payment doesn't bypass blocks if not paid.
+
         const updateData = {
           submissionType,
           submittedAt: new Date()
@@ -460,6 +487,11 @@ class AssignmentsService {
         updateData.status = 'pending';
         updateData.requestCorrection = false;
 
+        // Check for late payment status on update
+        if (existingSubmission.isLate && existingSubmission.paymentStatus === 'pending' && existingSubmission.assignment.paymentRequired) {
+          throw new Error('Please clear pending payments for this assignment before updating.');
+        }
+
         await existingSubmission.update(updateData);
 
         // Refresh the submission data
@@ -477,6 +509,50 @@ class AssignmentsService {
           message: 'Submission updated successfully',
           submission: existingSubmission
         };
+      }
+
+      // --- New Logic: Sequential Submission Check ---
+      // Get all active assignments for this class, ordered by date
+      const allAssignments = await Assignment.findAll({
+        where: {
+          classId: assignment.classId,
+          isActive: true
+        },
+        order: [['startDate', 'ASC']],
+        attributes: ['id', 'title', 'startDate']
+      });
+
+      // Find index of current assignment
+      const currentIndex = allAssignments.findIndex(a => a.id === assignmentId);
+
+      if (currentIndex > 0) {
+        // Get all previous assignment IDs
+        const previousAssignmentIds = allAssignments.slice(0, currentIndex).map(a => a.id);
+
+        // Check if user has submitted all previous assignments
+        const previousSubmissions = await AssignmentSubmission.findAll({
+          where: {
+            userId: user.id,
+            assignmentId: { [Op.in]: previousAssignmentIds }
+          },
+          attributes: ['assignmentId', 'paymentStatus', 'isBlocked']
+        });
+
+        // 1. Check if count matches (did they submit all?)
+        if (previousSubmissions.length < previousAssignmentIds.length) {
+          // Find which one is missing
+          const submittedIds = previousSubmissions.map(s => s.assignmentId);
+          const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
+          const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
+
+          throw new Error(`Please submit previous assignment "${missingAssignment.title}" first.`);
+        }
+
+        // 2. Check if any previous submission is blocked/unpaid
+        const blockedSubmission = previousSubmissions.find(s => s.isBlocked || s.paymentStatus === 'pending');
+        if (blockedSubmission) {
+          throw new Error('Please clear pending payments for previous assignments before proceeding.');
+        }
       }
 
       // Validate submission based on assignment submission mode
@@ -531,10 +607,20 @@ class AssignmentsService {
 
         // If payment is required for late submissions
         if (assignment.paymentRequired) {
-          submissionDataToSave.paymentStatus = 'pending';
-          submissionDataToSave.paymentAmount = assignment.paymentAmount;
-          submissionDataToSave.isBlocked = true;
-          submissionDataToSave.blockReason = 'Late submission requires payment to regain access';
+          // STRICT CHECK: Do not allow submission creation if not paid.
+          const payment = await Payment.findOne({
+            where: {
+              userId: user.id,
+              status: 'success',
+              metadata: {
+                assignmentId: assignmentId
+              }
+            }
+          });
+
+          if (!payment) {
+            throw new Error('Deadline has passed. Please pay the late fee to enable submission.');
+          }
         }
       }
 

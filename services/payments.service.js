@@ -10,9 +10,9 @@ class PaymentsService {
   // Get user payments
   async getUserPayments(userId) {
     try {
-      const payments = await Payment.findAll({ 
-        where: { userId }, 
-        order: [['createdAt', 'DESC']] 
+      const payments = await Payment.findAll({
+        where: { userId },
+        order: [['createdAt', 'DESC']]
       });
       return { payments };
     } catch (error) {
@@ -24,20 +24,30 @@ class PaymentsService {
   // Initialize late fee payment
   async initializeLateFeePayment(userId, userEmail, paymentData) {
     try {
-      const { submissionId, amount } = paymentData;
-      if (!submissionId || !amount) {
-        throw new Error('Missing required fields');
+      const { submissionId, assignmentId, amount } = paymentData;
+
+      if ((!submissionId && !assignmentId) || !amount) {
+        throw new Error('Missing required fields (submissionId or assignmentId, and amount)');
       }
 
       const reference = uuidv4();
-      const payment = await Payment.create({
+
+      const paymentDataToCreate = {
         userId,
-        submissionId,
         amount,
         reference,
         status: 'pending',
         type: 'late_fee',
-      });
+      };
+
+      if (submissionId) paymentDataToCreate.submissionId = submissionId;
+
+      const payment = await Payment.create(paymentDataToCreate);
+
+      // Metadata for Paystack
+      const metadata = {};
+      if (submissionId) metadata.submissionId = submissionId;
+      if (assignmentId) metadata.assignmentId = assignmentId;
 
       // Create Paystack payment
       const paystackRes = await axios.post(
@@ -46,18 +56,22 @@ class PaymentsService {
           email: userEmail,
           amount: amount * 100, // Paystack expects kobo
           reference,
-          metadata: { submissionId },
+          metadata: metadata,
         },
         { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } }
       );
 
+      // Update payment with Paystack response and metadata
       payment.paystackResponse = paystackRes.data;
+      payment.metadata = metadata;
       await payment.save();
 
-      return { 
-        message: 'Payment initialized', 
-        payment, 
-        paystack: paystackRes.data 
+
+
+      return {
+        message: 'Payment initialized',
+        payment,
+        paystack: paystackRes.data
       };
     } catch (error) {
       console.error('Error initializing late fee payment:', error);
@@ -92,10 +106,10 @@ class PaymentsService {
       }
       await payment.save();
 
-      return { 
-        success: payment.status === 'success', 
-        message: 'Payment verified', 
-        payment 
+      return {
+        success: payment.status === 'success',
+        message: 'Payment verified',
+        payment
       };
     } catch (error) {
       console.error('Error verifying payment:', error);
@@ -107,18 +121,18 @@ class PaymentsService {
   async getPaymentHistory(userId) {
     try {
       console.log('Fetching payment history for user:', userId);
-      
+
       // First check if Payment model is properly loaded
       if (!Payment) {
         console.error('Payment model not found');
         throw new Error('Payment model not available');
       }
-      
-      const payments = await Payment.findAll({ 
-        where: { userId }, 
-        order: [['createdAt', 'DESC']] 
+
+      const payments = await Payment.findAll({
+        where: { userId },
+        order: [['createdAt', 'DESC']]
       });
-      
+
       console.log('Found payments:', payments.length);
       return { payments };
     } catch (error) {
@@ -145,7 +159,7 @@ class PaymentsService {
   async getAllPayments(params) {
     try {
       const { page = 1, limit = 20, status, type } = params;
-      
+
       const where = {};
       if (status) where.status = status;
       if (type) where.type = type;
