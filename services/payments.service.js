@@ -231,6 +231,7 @@ class PaymentsService {
   }
   // Process webhook
   async processWebhook(body, signature) {
+    console.log('[PaymentsService] Delegating webhook processing to PaystackService');
     // Import here to avoid circular dependency if PaystackService imports models
     const PaystackService = require('../utils/paystack');
     return await PaystackService.processWebhook(body, signature);

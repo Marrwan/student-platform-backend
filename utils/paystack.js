@@ -220,8 +220,11 @@ class PaystackService {
   // Process webhook
   async processWebhook(body, signature) {
     try {
+      console.log(`[PaystackService] Processing webhook event: ${body.event}`);
+
       // Verify webhook signature
       if (!this.verifyWebhookSignature(signature, body)) {
+        console.warn('[PaystackService] Invalid webhook signature');
         return {
           success: false,
           error: 'Invalid webhook signature'
@@ -230,6 +233,8 @@ class PaystackService {
 
       const event = body.event;
       const data = body.data;
+
+      console.log(`[PaystackService] Webhook verified. Event: ${event}, Reference: ${data.reference}`);
 
       switch (event) {
         case 'charge.success':
@@ -242,13 +247,14 @@ class PaystackService {
           return await this.handleFailedTransfer(data);
 
         default:
+          console.log(`[PaystackService] Unhandled event type: ${event}`);
           return {
             success: true,
             message: `Unhandled event: ${event}`
           };
       }
     } catch (error) {
-      console.error('Webhook processing error:', error);
+      console.error('[PaystackService] Webhook processing error:', error);
       return {
         success: false,
         error: error.message
@@ -260,6 +266,7 @@ class PaystackService {
   async handleSuccessfulCharge(data) {
     try {
       const { reference, amount, metadata } = data;
+      console.log(`[PaystackService] Handling successful charge. Ref: ${reference}, Amount: ${amount}`);
 
       // Update payment record in database
       const { Payment } = require('../models');
@@ -268,6 +275,7 @@ class PaystackService {
       if (payment) {
         // Idempotency check: If payment is already completed, return success immediately
         if (payment.status === 'completed') {
+          console.log(`[PaystackService] Payment ${reference} already completed. Idempotency check passed.`);
           return {
             success: true,
             message: 'Payment already processed',
@@ -275,6 +283,7 @@ class PaystackService {
           };
         }
 
+        console.log(`[PaystackService] Updating payment ${reference} to completed.`);
         await payment.update({
           status: 'completed',
           amount: amount / 100, // Convert from kobo to naira
@@ -285,6 +294,7 @@ class PaystackService {
 
         // Update submission status if it's a late fee payment
         if (metadata && metadata.submissionId) {
+          console.log(`[PaystackService] Found submission metadata. Updating submission ${metadata.submissionId}`);
           const { AssignmentSubmission } = require('../models');
           const submission = await AssignmentSubmission.findByPk(metadata.submissionId);
           if (submission) {
@@ -292,6 +302,9 @@ class PaystackService {
               lateFeePaid: true,
               lateFeePaidAt: new Date()
             });
+            console.log(`[PaystackService] Submission ${metadata.submissionId} marked as paid.`);
+          } else {
+            console.warn(`[PaystackService] Submission ${metadata.submissionId} not found.`);
           }
         }
 
@@ -302,12 +315,13 @@ class PaystackService {
         };
       }
 
+      console.warn(`[PaystackService] Payment record not found for ref: ${reference}`);
       return {
         success: false,
         error: 'Payment record not found'
       };
     } catch (error) {
-      console.error('Handle successful charge error:', error);
+      console.error('[PaystackService] Handle successful charge error:', error);
       return {
         success: false,
         error: error.message

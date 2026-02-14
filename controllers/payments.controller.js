@@ -82,22 +82,27 @@ class PaymentsController {
   async handleWebhook(req, res) {
     try {
       const signature = req.headers['x-paystack-signature'];
+      console.log(`[Webhook] Received Paystack webhook. Signature present: ${!!signature}`);
+
       const result = await paymentsService.processWebhook(req.body, signature);
 
       if (!result.success) {
-        console.error('Webhook processing failed:', result.error);
-        // Paystack expects 200 to acknowledge receipt even if logic fails, 
-        // but if signature is invalid we might want to return 400.
-        // However, standard practice is often just 200 to stop retries if it's a logic error we can't fix with retry.
-        // If signature is invalid, it's definitely a 400 or 401.
+        console.error('[Webhook] Processing failed:', result.error);
+
         if (result.error === 'Invalid webhook signature') {
+          console.warn('[Webhook] Invalid signature detected. Rejecting request.');
           return res.status(401).json({ message: 'Invalid signature' });
+        }
+      } else {
+        console.log('[Webhook] Successfully processed event:', req.body.event);
+        if (result.message) {
+          console.log('[Webhook] Result message:', result.message);
         }
       }
 
       res.status(200).send('Webhook received');
     } catch (error) {
-      console.error('Error in handleWebhook controller:', error);
+      console.error('[Webhook] Error in controller:', error);
       res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   }
