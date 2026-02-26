@@ -132,7 +132,6 @@ exports.updateKeyResultScore = async (req, res) => {
         const keyResult = await KeyResult.findByPk(id);
         if (!keyResult) return res.status(404).send({ message: "Key Result not found" });
 
-        // Update fields conditionally
         if (selfScore !== undefined) keyResult.selfScore = selfScore;
         if (reviewerScore !== undefined) keyResult.reviewerScore = reviewerScore;
         if (employeeComments !== undefined) keyResult.employeeComments = employeeComments;

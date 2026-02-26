@@ -55,7 +55,7 @@ router.put('/users/:id', [
   body('lastName').optional().trim().isLength({ min: 1 }).withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
   body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').optional().isIn(['student', 'admin', 'partial_admin']).withMessage('Invalid role'),
+  body('role').optional().isIn(['student', 'admin', 'instructor', 'staff']).withMessage('Invalid role'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
   body('emailVerified').optional().isBoolean().withMessage('emailVerified must be a boolean')
 ], adminController.updateUser);

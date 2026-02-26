@@ -332,7 +332,7 @@ class AuthService {
       }
 
       // Add legacy permissions (partial admin)
-      if (user.role === 'partial_admin' && user.permissions) {
+      if (['instructor', 'staff'].includes(user.role) && user.permissions) {
         Object.keys(user.permissions).forEach(k => {
           if (user.permissions[k]) resolvedPermissions.add(k);
         });

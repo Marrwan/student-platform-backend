@@ -32,7 +32,7 @@ router.put('/:id', authenticateToken, requireAdmin, [
   body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters'),
   body('lastName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters'),
   body('email').optional().isEmail().withMessage('Valid email required'),
-  body('role').optional().isIn(['student', 'admin', 'partial_admin']).withMessage('Valid role required'),
+  body('role').optional().isIn(['student', 'admin', 'instructor', 'staff']).withMessage('Valid role required'),
   body('isActive').optional().isBoolean().withMessage('isActive must be boolean')
 ], usersController.updateUser);
 

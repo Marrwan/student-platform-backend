@@ -304,7 +304,7 @@ class AssignmentsService {
       }
 
       // Authorization check: User must be admin or the owner of the submission
-      const isAdmin = user.role === 'admin' || user.role === 'partial_admin';
+      const isAdmin = user.role === 'admin' || user.role === 'instructor' || user.role === 'staff';
       const isOwner = submission.userId === user.id;
 
       if (!isAdmin && !isOwner) {

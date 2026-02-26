@@ -54,7 +54,8 @@ app.use(helmet({
   }
 }));
 
-app.use(cors({
+// Centralized CORS configuration
+const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       'http://localhost:3000',
@@ -65,101 +66,47 @@ app.use(cors({
       process.env.FRONTEND_URL
     ].filter(Boolean);
 
-    // Allow non-browser requests or same-origin (no origin header)
+    // Allow non-browser requests (e.g. Postman, server-to-server)
     if (!origin) return callback(null, true);
 
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+    // Allow any netlify.app subdomain
+    if (origin.endsWith('.netlify.app')) return callback(null, true);
 
-    // Also allow any netlify.app subdomain
-    if (origin && origin.endsWith('.netlify.app')) {
-      return callback(null, true);
-    }
+    // Check explicit allowlist
+    if (allowedOrigins.includes(origin)) return callback(null, true);
 
-    console.log(`CORS blocked for origin: ${origin}`);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length']
-}));
+};
 
-// Explicitly handle preflight requests
-app.options('*', cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'https://strangedevclass.netlify.app',
-      'https://student-platform-frontend.onrender.com',
-      process.env.FRONTEND_URL
-    ].filter(Boolean);
-
-    // Allow non-browser requests or same-origin (no origin header)
-    if (!origin) return callback(null, true);
-
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Also allow any netlify.app subdomain
-    if (origin && origin.endsWith('.netlify.app')) {
-      return callback(null, true);
-    }
-
-    return callback(null, false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
-}));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Compression middleware
 app.use(compression());
 
-// CORS debugging middleware
-app.use((req, res, next) => {
-  console.log(`[CORS Debug] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
-  next();
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 200, // limit each IP to 200 requests per 10 minutes
+  message: { message: 'Too many requests from this IP, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/health' // Don't rate-limit health checks
 });
 
-// Specific CORS handler for assignment submission
-app.use('/api/assignments/:id/submit', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://strangedevclass.netlify.app');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
+const speedLimiter = slowDown({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  delayAfter: 80,
+  delayMs: () => 100 // 100ms delay per request above 80
 });
 
-// // Rate limiting
-// const limiter = rateLimit({
-//   windowMs: 600 * 60 * 1000, // 1 hour
-//   max: 100, // limit each IP to 100 requests per windowMs
-//   message: 'Too many requests from this IP, please try again later.',
-//   standardHeaders: true,
-//   legacyHeaders: false
-// });
-
-// // Slow down repeated requests
-// const speedLimiter = slowDown({
-//   windowMs: 600 * 60 * 1000, // 1 hour
-//   delayAfter: 50, // allow 50 requests per 15 minutes, then...
-//   delayMs: () => 500 // begin adding 500ms of delay per request above 50
-// });
-
-// app.use('/api/', limiter);
-// app.use('/api/', speedLimiter);
+app.use('/api/', limiter);
+app.use('/api/', speedLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

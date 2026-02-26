@@ -8,14 +8,14 @@ class ClassesService {
   async getAllClasses(user, params) {
     try {
       const { page = 1, limit = 20, status } = params;
-      
+
       const offset = (parseInt(page) - 1) * parseInt(limit);
-      
-      if (user.role === 'admin' || user.role === 'partial_admin') {
+
+      if (user.role === 'admin' || user.role === 'instructor' || user.role === 'staff') {
         // Admin sees all classes
         const whereClause = {};
         if (status) whereClause.isActive = status === 'active';
-        
+
         const classes = await Class.findAndCountAll({
           where: whereClause,
           include: [
@@ -52,7 +52,7 @@ class ClassesService {
         // Students see all active classes and their enrollment status
         const whereClause = { isActive: true };
         if (status) whereClause.isActive = status === 'active';
-        
+
         const classes = await Class.findAndCountAll({
           where: whereClause,
           include: [
@@ -155,7 +155,7 @@ class ClassesService {
           {
             model: User,
             as: 'instructor',
-            attributes: user.role === 'student' 
+            attributes: user.role === 'student'
               ? ['id', 'firstName', 'lastName'] // Students can't see instructor email
               : ['id', 'firstName', 'lastName', 'email']
           },
@@ -199,7 +199,7 @@ class ClassesService {
         const enrollment = await ClassEnrollment.findOne({
           where: { classId, userId: user.id }
         });
-        
+
         if (!enrollment && classData.instructorId !== user.id) {
           throw new Error('Access denied');
         }
@@ -208,8 +208,8 @@ class ClassesService {
       // Add student count
       const classWithCounts = classData.toJSON();
       classWithCounts.studentCount = classData.enrollments.length;
-      classWithCounts.isEnrolled = user.role === 'student' ? 
-        classData.enrollments.some(e => e.student.id === user.id) : 
+      classWithCounts.isEnrolled = user.role === 'student' ?
+        classData.enrollments.some(e => e.student.id === user.id) :
         classData.instructorId === user.id;
 
       // Add model methods to assignments
@@ -235,7 +235,7 @@ class ClassesService {
         // Students can see all students but only their own progress data
         classWithCounts.enrollments = classWithCounts.enrollments.map(enrollment => {
           const enrollmentData = { ...enrollment };
-          
+
           // If this is not the current user's enrollment, remove sensitive data
           if (enrollment.student.id !== user.id) {
             delete enrollmentData.progress;
@@ -243,10 +243,10 @@ class ClassesService {
             delete enrollmentData.status;
             delete enrollmentData.enrolledAt;
           }
-          
+
           return enrollmentData;
         });
-        
+
         // Remove sensitive data from assignments
         if (classWithCounts.assignments) {
           classWithCounts.assignments = classWithCounts.assignments.map(assignment => {
@@ -485,7 +485,7 @@ class ClassesService {
         const enrollment = await ClassEnrollment.findOne({
           where: { classId, userId: user.id }
         });
-        
+
         if (!enrollment) {
           throw new Error('Access denied');
         }
@@ -515,12 +515,12 @@ class ClassesService {
         assignments.rows = assignments.rows.map(assignment => {
           const assignmentData = assignment.toJSON();
           const submission = assignment.submissions?.[0];
-          
+
           assignmentData.submissionStatus = submission ? submission.status : 'not_submitted';
           assignmentData.submissionScore = submission ? submission.score : null;
           assignmentData.isOverdue = assignment.isOverdue();
           assignmentData.timeRemaining = assignment.getTimeRemaining();
-          
+
           return assignmentData;
         });
       }
@@ -568,7 +568,7 @@ class ClassesService {
       for (const email of emails) {
         try {
           const user = await User.findOne({ where: { email } });
-          
+
           if (user) {
             // Existing user - check if already enrolled
             const existingEnrollment = await ClassEnrollment.findOne({
@@ -597,7 +597,7 @@ class ClassesService {
               // Create account for new user
               const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
               const hashedPassword = await bcrypt.hash(tempPassword, 12);
-              
+
               const newUser = await User.create({
                 email,
                 password: hashedPassword,
@@ -631,7 +631,7 @@ class ClassesService {
               // Send registration invitation
               const registrationToken = crypto.randomBytes(32).toString('hex');
               const registrationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-              
+
               // Store registration invitation
               await ClassInvitation.create({
                 email,
@@ -643,7 +643,7 @@ class ClassesService {
               });
 
               const registrationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/register?token=${registrationToken}&classId=${classId}`;
-              
+
               await sendEmail({
                 to: email,
                 subject: `Join ${classData.name} - Create Your Account`,
@@ -683,7 +683,7 @@ class ClassesService {
   async createClassSchedule(classId, scheduleData, userId, userRole) {
     try {
       const classData = await Class.findByPk(classId);
-      
+
       if (!classData) {
         throw new Error('Class not found');
       }
@@ -758,7 +758,7 @@ class ClassesService {
         const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
         const startTime = updateData.startTime || schedule.startTime;
         const endTime = updateData.endTime || schedule.endTime;
-        
+
         if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
           throw new Error('Invalid time format. Use HH:MM format');
         }

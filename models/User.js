@@ -38,7 +38,7 @@ module.exports = (sequelize) => {
       }
     },
     role: {
-      type: DataTypes.ENUM('student', 'admin', 'partial_admin'),
+      type: DataTypes.ENUM('student', 'admin', 'instructor', 'staff'),
       defaultValue: 'student'
     },
     isActive: {
@@ -190,12 +190,16 @@ module.exports = (sequelize) => {
   };
 
   User.prototype.isAdmin = function () {
-    return this.role === 'admin' || this.role === 'partial_admin';
+    return this.role === 'admin';
+  };
+
+  User.prototype.isStaffOrAbove = function () {
+    return ['admin', 'instructor', 'staff'].includes(this.role);
   };
 
   User.prototype.hasPermission = function (permission) {
     if (this.role === 'admin') return true;
-    if (this.role === 'partial_admin') {
+    if (['instructor', 'staff'].includes(this.role)) {
       return this.permissions && this.permissions[permission];
     }
     return false;
@@ -311,7 +315,7 @@ module.exports = (sequelize) => {
     }
 
     // Fallback to legacy check if new system data isn't loaded/migrated yet
-    if (this.role === 'partial_admin' && this.permissions && this.permissions[permissionName]) {
+    if (['instructor', 'staff'].includes(this.role) && this.permissions && this.permissions[permissionName]) {
       return true;
     }
 

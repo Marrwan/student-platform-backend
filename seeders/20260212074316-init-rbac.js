@@ -176,7 +176,7 @@ module.exports = {
 
       const roleMapping = {
         'admin': roleMap['Super Admin'], // Existing admins become Super Admins
-        'partial_admin': roleMap['Staff'],  // Partial admins become Staff
+        'staff': roleMap['Staff'],  // Staff users get Staff role
         'student': roleMap['Student']
       };
 
