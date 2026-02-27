@@ -702,7 +702,7 @@ class AdminService {
                   </div>
                   <p>Log in to your account to access the class materials and assignments.</p>
                   <p>If you don't have an account, you can register using this email address.</p>
-                  <p>Best regards,<br>The Learning Platform Team</p>
+                  <p>Best regards,<br>The Nexus Systems Team</p>
                 </div>
               `
             });

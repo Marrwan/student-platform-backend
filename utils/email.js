@@ -20,10 +20,10 @@ const createTransporter = () => {
 // Email templates
 const emailTemplates = {
   welcome: (userName) => ({
-    subject: 'Welcome to Learning Platform!',
+    subject: 'Welcome to Nexus Systems!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2563eb;">Welcome to Learning Platform!</h2>
+        <h2 style="color: #2563eb;">Welcome to Nexus Systems!</h2>
         <p>Hello ${userName},</p>
         <p>Welcome to our comprehensive learning platform! We're excited to have you on board.</p>
         <p>Here's what you can do:</p>
@@ -34,7 +34,7 @@ const emailTemplates = {
           <li>Compete on leaderboards</li>
         </ul>
         <p>Get started by logging into your dashboard!</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -44,14 +44,14 @@ const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2563eb;">Password Reset Request</h2>
-        <p>You requested a password reset for your Learning Platform account.</p>
+        <p>You requested a password reset for your Nexus Systems account.</p>
         <p>Click the link below to reset your password:</p>
         <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0;">
           Reset Password
         </a>
         <p>If you didn't request this, please ignore this email.</p>
         <p>This link will expire in 1 hour.</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -68,7 +68,7 @@ const emailTemplates = {
           <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
         </div>
         <p>Log in to your dashboard to view the full assignment details and submit your work.</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -85,7 +85,7 @@ const emailTemplates = {
           <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
         </div>
         <p>Start working on your assignment now!</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -104,7 +104,7 @@ const emailTemplates = {
           ${feedback ? `<p><strong>Feedback:</strong> ${feedback}</p>` : ''}
         </div>
         <p>Log in to your dashboard to view the full review.</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -120,7 +120,7 @@ const emailTemplates = {
           ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
         </div>
         <p>Log in to your account and use the enrollment code to join the class.</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -136,7 +136,7 @@ const emailTemplates = {
           <p><strong>Class:</strong> ${className}</p>
           <p><strong>Enrolled:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -153,7 +153,7 @@ const emailTemplates = {
           <p><strong>Late Fee:</strong> ₦${lateFee}</p>
         </div>
         <p>Please complete the payment to avoid further penalties.</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   }),
@@ -170,7 +170,7 @@ const emailTemplates = {
           <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
         </div>
         <p>Don't forget to submit your work on time!</p>
-        <p>Best regards,<br>The Learning Platform Team</p>
+        <p>Best regards,<br>The Nexus Systems Team</p>
       </div>
     `
   })

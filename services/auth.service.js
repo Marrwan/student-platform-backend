@@ -39,9 +39,9 @@ class AuthService {
       // Send verification email with OTP
       await sendEmail({
         to: normalizedEmail,
-        subject: 'Email Verification - JavaScript Learning Platform',
+        subject: 'Email Verification - Nexus Systems',
         html: `
-          <h2>Welcome to JavaScript Learning Platform!</h2>
+          <h2>Welcome to Nexus Systems!</h2>
           <p>Hi ${firstName} ${lastName},</p>
           <p>Thank you for registering! Please use the following 6-digit code to verify your email address:</p>
           <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
@@ -49,7 +49,7 @@ class AuthService {
           </div>
           <p>This code will expire in 10 minutes.</p>
           <p>If you didn't create this account, please ignore this email.</p>
-          <p>Best regards,<br>The JavaScript Learning Platform Team</p>
+          <p>Best regards,<br>The Nexus Systems Team</p>
         `
 
       }).catch(err => {
@@ -182,7 +182,7 @@ class AuthService {
       // Send verification email with OTP
       await sendEmail({
         to: normalizedEmail,
-        subject: 'Email Verification Code - JavaScript Learning Platform',
+        subject: 'Email Verification Code - Nexus Systems',
         html: `
           <h2>Email Verification Code</h2>
           <p>Hi ${user.firstName} ${user.lastName},</p>
@@ -192,7 +192,7 @@ class AuthService {
           </div>
           <p>This code will expire in 10 minutes.</p>
           <p>If you didn't request this code, please ignore this email.</p>
-          <p>Best regards,<br>The JavaScript Learning Platform Team</p>
+          <p>Best regards,<br>The Nexus Systems Team</p>
         `
       }).catch(err => {
         console.warn('Failed to send verification email during resend:', err.message);
@@ -394,7 +394,7 @@ class AuthService {
       try {
         const emailResult = await sendEmail({
           to: email,
-          subject: 'Password Reset - JavaScript Learning Platform',
+          subject: 'Password Reset - Nexus Systems',
           html: `
             <h2>Password Reset Request</h2>
             <p>Hi ${user.firstName} ${user.lastName},</p>
@@ -402,7 +402,7 @@ class AuthService {
             <p><a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
             <p>This link will expire in 1 hour.</p>
             <p>If you didn't request this reset, please ignore this email.</p>
-            <p>Best regards,<br>The JavaScript Learning Platform Team</p>
+            <p>Best regards,<br>The Nexus Systems Team</p>
           `
         });
 

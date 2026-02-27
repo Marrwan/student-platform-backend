@@ -302,13 +302,13 @@ class AdminController {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #2563eb;">Test Email</h2>
-            <p>This is a test email from the Learning Platform.</p>
+            <p>This is a test email from the Nexus Systems.</p>
             <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
               <p><strong>Message:</strong> ${message}</p>
               <p><strong>Sent at:</strong> ${new Date().toLocaleString()}</p>
             </div>
             <p>If you received this email, the email system is working correctly!</p>
-            <p>Best regards,<br>The Learning Platform Team</p>
+            <p>Best regards,<br>The Nexus Systems Team</p>
           </div>
         `
       });

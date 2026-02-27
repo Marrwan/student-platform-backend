@@ -6,14 +6,14 @@ const { sequelize } = require('./models');
 async function createAdminUser() {
   try {
     console.log('🔧 Creating admin user...');
-    
+
     // Test database connection
     await sequelize.authenticate();
     console.log('✅ Database connection established');
-    
+
     // Hash the password
     const hashedPassword = await bcrypt.hash('Abdul2019!', 12);
-    
+
     // Create admin user data
     const adminUser = {
       id: uuidv4(),
@@ -49,7 +49,7 @@ async function createAdminUser() {
       metadata: {
         createdBy: 'system',
         source: 'script',
-        notes: 'Primary admin user for the learning platform',
+        notes: 'Primary admin user for the Nexus Systems',
         country: 'Nigeria',
         timezone: 'Africa/Lagos'
       },
@@ -68,10 +68,10 @@ async function createAdminUser() {
 
     if (existingAdmin.length > 0) {
       console.log('⚠️ Admin user already exists, updating...');
-      
-              // Update existing admin user
-        await sequelize.query(
-          `UPDATE "Users" SET 
+
+      // Update existing admin user
+      await sequelize.query(
+        `UPDATE "Users" SET 
             password = :password,
             "firstName" = :firstName,
             "lastName" = :lastName,
@@ -85,32 +85,32 @@ async function createAdminUser() {
             metadata = :metadata,
             "updatedAt" = :updatedAt
           WHERE email = :email`,
-          {
-            replacements: {
-              password: adminUser.password,
-              firstName: adminUser.firstName,
-              lastName: adminUser.lastName,
-              role: adminUser.role,
-              emailVerified: adminUser.emailVerified,
-              isActive: adminUser.isActive,
-              bio: adminUser.bio,
-              emailNotifications: adminUser.emailNotifications,
-              pushNotifications: adminUser.pushNotifications,
-              permissions: JSON.stringify(adminUser.permissions),
-              metadata: JSON.stringify(adminUser.metadata),
-              updatedAt: adminUser.updatedAt,
-              email: adminUser.email
-            }
+        {
+          replacements: {
+            password: adminUser.password,
+            firstName: adminUser.firstName,
+            lastName: adminUser.lastName,
+            role: adminUser.role,
+            emailVerified: adminUser.emailVerified,
+            isActive: adminUser.isActive,
+            bio: adminUser.bio,
+            emailNotifications: adminUser.emailNotifications,
+            pushNotifications: adminUser.pushNotifications,
+            permissions: JSON.stringify(adminUser.permissions),
+            metadata: JSON.stringify(adminUser.metadata),
+            updatedAt: adminUser.updatedAt,
+            email: adminUser.email
           }
-        );
-      
+        }
+      );
+
       console.log('✅ Admin user updated successfully');
     } else {
       console.log('📝 Creating new admin user...');
-      
-              // Insert new admin user
-        await sequelize.query(
-          `INSERT INTO "Users" (
+
+      // Insert new admin user
+      await sequelize.query(
+        `INSERT INTO "Users" (
             id, email, password, "firstName", "lastName", role, "emailVerified", 
             "isActive", bio, "emailNotifications", "pushNotifications", permissions, metadata, 
             "createdAt", "updatedAt"
@@ -119,27 +119,27 @@ async function createAdminUser() {
             :isActive, :bio, :emailNotifications, :pushNotifications, :permissions, :metadata,
             :createdAt, :updatedAt
           )`,
-          {
-            replacements: {
-              id: adminUser.id,
-              email: adminUser.email,
-              password: adminUser.password,
-              firstName: adminUser.firstName,
-              lastName: adminUser.lastName,
-              role: adminUser.role,
-              emailVerified: adminUser.emailVerified,
-              isActive: adminUser.isActive,
-              bio: adminUser.bio,
-              emailNotifications: adminUser.emailNotifications,
-              pushNotifications: adminUser.pushNotifications,
-              permissions: JSON.stringify(adminUser.permissions),
-              metadata: JSON.stringify(adminUser.metadata),
-              createdAt: adminUser.createdAt,
-              updatedAt: adminUser.updatedAt
-            }
+        {
+          replacements: {
+            id: adminUser.id,
+            email: adminUser.email,
+            password: adminUser.password,
+            firstName: adminUser.firstName,
+            lastName: adminUser.lastName,
+            role: adminUser.role,
+            emailVerified: adminUser.emailVerified,
+            isActive: adminUser.isActive,
+            bio: adminUser.bio,
+            emailNotifications: adminUser.emailNotifications,
+            pushNotifications: adminUser.pushNotifications,
+            permissions: JSON.stringify(adminUser.permissions),
+            metadata: JSON.stringify(adminUser.metadata),
+            createdAt: adminUser.createdAt,
+            updatedAt: adminUser.updatedAt
           }
-        );
-      
+        }
+      );
+
       console.log('✅ Admin user created successfully');
     }
 
@@ -150,7 +150,7 @@ async function createAdminUser() {
     console.log('👨‍💼 Name: Abdulbasit Developer');
     console.log('🌍 Country: Nigeria');
     console.log('⏰ Timezone: Africa/Lagos');
-    
+
   } catch (error) {
     console.error('❌ Error creating admin user:', error);
     process.exit(1);

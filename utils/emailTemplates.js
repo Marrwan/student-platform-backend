@@ -1,11 +1,11 @@
 const emailTemplates = {
   // Account activation
   accountActivation: (user, activationCode) => ({
-    subject: 'Welcome to Learning Platform - Activate Your Account',
+    subject: 'Welcome to Nexus Systems - Activate Your Account',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center;">
-          <h1 style="margin: 0; font-size: 28px;">Welcome to Learning Platform!</h1>
+          <h1 style="margin: 0; font-size: 28px;">Welcome to Nexus Systems!</h1>
           <p style="margin: 10px 0 0 0; opacity: 0.9;">Activate your account to start your learning journey</p>
         </div>
         
@@ -13,7 +13,7 @@ const emailTemplates = {
           <h2 style="color: #333; margin-bottom: 20px;">Hello ${user.firstName}!</h2>
           
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for registering with our Learning Platform. To complete your registration and start accessing our courses and projects, please activate your account.
+            Thank you for registering with our Nexus Systems. To complete your registration and start accessing our courses and projects, please activate your account.
           </p>
           
           <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
@@ -46,7 +46,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">If you didn't create this account, please ignore this email.</p>
         </div>
       </div>
@@ -55,7 +55,7 @@ const emailTemplates = {
 
   // Password reset
   passwordReset: (user, resetToken) => ({
-    subject: 'Reset Your Password - Learning Platform',
+    subject: 'Reset Your Password - Nexus Systems',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 30px; text-align: center;">
@@ -67,7 +67,7 @@ const emailTemplates = {
           <h2 style="color: #333; margin-bottom: 20px;">Hello ${user.firstName}!</h2>
           
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            We received a request to reset your password for your Learning Platform account. If you made this request, please use the link below to create a new password.
+            We received a request to reset your password for your Nexus Systems account. If you made this request, please use the link below to create a new password.
           </p>
           
           <div style="text-align: center; margin: 30px 0;">
@@ -92,7 +92,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">For security reasons, this link will expire in 1 hour.</p>
         </div>
       </div>
@@ -151,7 +151,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">Keep up the great work! 💪</p>
         </div>
       </div>
@@ -206,7 +206,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">You've got this! 🚀</p>
         </div>
       </div>
@@ -283,7 +283,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">Great work! Keep it up! 🎉</p>
         </div>
       </div>
@@ -304,7 +304,7 @@ const emailTemplates = {
           <h2 style="color: #333; margin-bottom: 20px;">Hello ${user.firstName}!</h2>
           
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            You've been invited to join a class on our Learning Platform. This is a great opportunity to learn alongside your peers!
+            You've been invited to join a class on our Nexus Systems. This is a great opportunity to learn alongside your peers!
           </p>
           
           <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 25px; margin: 30px 0;">
@@ -342,7 +342,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">Welcome to the class! 📚</p>
         </div>
       </div>
@@ -351,11 +351,11 @@ const emailTemplates = {
 
   // Welcome email
   welcomeEmail: (user) => ({
-    subject: 'Welcome to Learning Platform - Start Your Journey!',
+    subject: 'Welcome to Nexus Systems - Start Your Journey!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center;">
-          <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Learning Platform!</h1>
+          <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Nexus Systems!</h1>
           <p style="margin: 10px 0 0 0; opacity: 0.9;">Your learning journey starts now</p>
         </div>
         
@@ -363,7 +363,7 @@ const emailTemplates = {
           <h2 style="color: #333; margin-bottom: 20px;">Hello ${user.firstName}!</h2>
           
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            Welcome to Learning Platform! We're excited to have you join our community of learners. You're about to embark on an amazing journey of skill development and growth.
+            Welcome to Nexus Systems! We're excited to have you join our community of learners. You're about to embark on an amazing journey of skill development and growth.
           </p>
           
           <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 25px; margin: 30px 0;">
@@ -392,7 +392,7 @@ const emailTemplates = {
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
-          <p style="margin: 0;">© 2024 Learning Platform. All rights reserved.</p>
+          <p style="margin: 0;">© 2024 Nexus Systems. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; opacity: 0.7;">Happy learning! 🚀</p>
         </div>
       </div>
