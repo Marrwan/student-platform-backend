@@ -10,7 +10,7 @@ module.exports = {
     dialect: 'postgres',
     logging: false, // console.log, // Disable logging to improve performance
     pool: {
-      max: 20, // Increased from 5 to handle dashboard concurrency
+      max: 4, // Reduced from 20 to stay within Aiven's connection limits
       min: 0,
       acquire: 30000,
       idle: 10000
