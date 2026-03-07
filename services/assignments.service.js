@@ -1,5 +1,6 @@
 const { User, Class, Assignment, AssignmentSubmission, ClassEnrollment, AttendanceScore, ClassLeaderboard, WeeklyAttendance, sequelize, Payment } = require('../models');
 const { Op } = require('sequelize');
+const ValidationError = require('../utils/errors');
 const { sendEmail } = require('../utils/email');
 
 class AssignmentsService {
@@ -442,7 +443,7 @@ class AssignmentsService {
         try {
           codeSubmission = JSON.parse(codeSubmission);
         } catch (error) {
-          throw new Error('Invalid code submission format');
+          throw new ValidationError('Invalid code submission format');
         }
       }
 
@@ -459,7 +460,7 @@ class AssignmentsService {
       });
 
       if (!assignment) {
-        throw new Error('Assignment not found');
+        throw new ValidationError('Assignment not found');
       }
 
       // Check if user is enrolled in the class
@@ -468,7 +469,7 @@ class AssignmentsService {
       });
 
       if (!enrollment) {
-        throw new Error('Access denied');
+        throw new ValidationError('Access denied');
       }
 
       // Check if assignment is unlocked and can be submitted
@@ -477,11 +478,11 @@ class AssignmentsService {
         const startDate = new Date(assignment.startDate);
 
         if (now < startDate) {
-          throw new Error('Assignment has not started yet. Start time: ' + startDate.toLocaleString());
+          throw new ValidationError('Assignment has not started yet. Start time: ' + startDate.toLocaleString());
         } else if (now > assignment.deadline && !assignment.allowLateSubmission) {
-          throw new Error('Assignment deadline has passed and late submissions are not allowed');
+          throw new ValidationError('Assignment deadline has passed and late submissions are not allowed');
         } else {
-          throw new Error('Assignment is not available for submission at this time');
+          throw new ValidationError('Assignment is not available for submission at this time');
         }
       }
 
@@ -519,7 +520,7 @@ class AssignmentsService {
 
         // Check for late payment status on update
         if (existingSubmission.isLate && existingSubmission.paymentStatus === 'pending' && existingSubmission.assignment.paymentRequired) {
-          throw new Error('Please clear pending payments for this assignment before updating.');
+          throw new ValidationError('Please clear pending payments for this assignment before updating.');
         }
 
         await existingSubmission.update(updateData);
@@ -575,7 +576,7 @@ class AssignmentsService {
           const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
           const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
 
-          throw new Error(`Please submit previous assignment "${missingAssignment.title}" first.`);
+          throw new ValidationError(`Please submit previous assignment "${missingAssignment.title}" first.`);
         }
 
         // 2. Check if any previous submission is blocked/unpaid
@@ -604,7 +605,7 @@ class AssignmentsService {
 
             if (!hasPaid) {
               console.log(`[DEBUG] Seq Check - User blocked: No matching payment found for assignment ${blockedSub.assignmentId}`);
-              throw new Error('Please clear pending payments for previous assignments before proceeding.');
+              throw new ValidationError('Please clear pending payments for previous assignments before proceeding.');
             }
           }
         }
@@ -612,24 +613,24 @@ class AssignmentsService {
 
       // Validate submission based on assignment submission mode
       if (assignment.submissionMode === 'code' && submissionType !== 'code') {
-        throw new Error('This assignment only accepts code submissions');
+        throw new ValidationError('This assignment only accepts code submissions');
       }
 
       if (assignment.submissionMode === 'link' && submissionType !== 'link') {
-        throw new Error('This assignment only accepts link submissions');
+        throw new ValidationError('This assignment only accepts link submissions');
       }
 
       // Validate submission based on type
       if (submissionType === 'github' && !githubLink) {
-        throw new Error('GitHub link is required for GitHub submissions');
+        throw new ValidationError('GitHub link is required for GitHub submissions');
       }
 
       if (submissionType === 'code' && !codeSubmission) {
-        throw new Error('Code submission is required for code submissions');
+        throw new ValidationError('Code submission is required for code submissions');
       }
 
       if (submissionType === 'link' && !submissionLink) {
-        throw new Error('Submission link is required for link submissions');
+        throw new ValidationError('Submission link is required for link submissions');
       }
 
       if (submissionType === 'zip' && !file) {

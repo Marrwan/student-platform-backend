@@ -152,6 +152,14 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
 
+  // Custom Business Logic Errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Validation Error',
+      message: err.message
+    });
+  }
+
   // Sequelize validation errors
   if (err.name === 'SequelizeValidationError') {
     return res.status(400).json({
