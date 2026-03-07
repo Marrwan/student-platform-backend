@@ -579,9 +579,25 @@ class AssignmentsService {
         }
 
         // 2. Check if any previous submission is blocked/unpaid
-        const blockedSubmission = previousSubmissions.find(s => s.isBlocked || s.paymentStatus === 'pending');
-        if (blockedSubmission) {
-          throw new Error('Please clear pending payments for previous assignments before proceeding.');
+        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked || s.paymentStatus === 'pending');
+
+        if (blockedSubmissions.length > 0) {
+          // Double check the Payment table just in case the submission state is out of sync
+          for (const blockedSub of blockedSubmissions) {
+            const payment = await Payment.findOne({
+              where: {
+                userId: user.id,
+                status: 'success',
+                metadata: {
+                  assignmentId: blockedSub.assignmentId
+                }
+              }
+            });
+
+            if (!payment) {
+              throw new Error('Please clear pending payments for previous assignments before proceeding.');
+            }
+          }
         }
       }
 
