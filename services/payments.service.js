@@ -1,4 +1,4 @@
-const { Payment, Submission, User, Project, sequelize } = require('../models');
+const { Payment, Submission, User, Project, Assignment, sequelize } = require('../models');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
@@ -14,7 +14,24 @@ class PaymentsService {
         where: { userId },
         order: [['createdAt', 'DESC']]
       });
-      return { payments };
+
+      // Enrich with assignment names if metadata contains assignmentId
+      const enrichedPayments = await Promise.all(payments.map(async (payment) => {
+        const pJson = payment.toJSON();
+        if (pJson.metadata && pJson.metadata.assignmentId) {
+          try {
+            const assignment = await Assignment.findByPk(pJson.metadata.assignmentId, { attributes: ['id', 'title'] });
+            if (assignment) {
+              pJson.metadata.assignmentTitle = assignment.title;
+            }
+          } catch (err) {
+            console.error('Error fetching assignment for payment:', err);
+          }
+        }
+        return pJson;
+      }));
+
+      return { payments: enrichedPayments };
     } catch (error) {
       console.error('Error fetching user payments:', error);
       throw error;
