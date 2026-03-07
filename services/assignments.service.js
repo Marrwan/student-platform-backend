@@ -584,17 +584,26 @@ class AssignmentsService {
         if (blockedSubmissions.length > 0) {
           // Double check the Payment table just in case the submission state is out of sync
           for (const blockedSub of blockedSubmissions) {
-            const payment = await Payment.findOne({
+            // Find all successful payments for this user, then filter in memory
+            // This avoids JSONB dialect issues (Op.contains vs raw string matching)
+            const successfulPayments = await Payment.findAll({
               where: {
                 userId: user.id,
-                status: 'success',
-                metadata: {
-                  assignmentId: blockedSub.assignmentId
-                }
+                status: 'success'
               }
             });
 
-            if (!payment) {
+            console.log(`[DEBUG] Seq Check - Blocked Sub: ${blockedSub.assignmentId}`);
+            console.log(`[DEBUG] Seq Check - Found ${successfulPayments.length} successful payments for user`);
+
+            const hasPaid = successfulPayments.some(p => {
+              const pMetadata = p.metadata || {};
+              console.log(`[DEBUG] Seq Check - Payment metadata:`, pMetadata);
+              return pMetadata.assignmentId === blockedSub.assignmentId;
+            });
+
+            if (!hasPaid) {
+              console.log(`[DEBUG] Seq Check - User blocked: No matching payment found for assignment ${blockedSub.assignmentId}`);
               throw new Error('Please clear pending payments for previous assignments before proceeding.');
             }
           }
