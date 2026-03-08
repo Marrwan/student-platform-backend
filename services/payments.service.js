@@ -126,7 +126,33 @@ class PaymentsService {
       payment.paystackResponse = verifyRes.data;
       if (verifyRes.data.data.status === 'success') {
         payment.status = 'success';
-        // Optionally update submission status here
+
+        // If this payment is for an assignment, mark all other pending payments for this assignment as failed
+        const assignmentId = payment.metadata?.assignmentId;
+        if (assignmentId) {
+          try {
+            await Payment.update(
+              { status: 'failed' },
+              {
+                where: {
+                  userId: payment.userId,
+                  status: 'pending',
+                  id: {
+                    [sequelize.Sequelize.Op.ne]: payment.id // exclude current payment
+                  },
+                  [sequelize.Sequelize.Op.and]: [
+                    sequelize.where(
+                      sequelize.fn('jsonb_extract_path_text', sequelize.col('metadata'), 'assignmentId'),
+                      assignmentId
+                    )
+                  ]
+                }
+              }
+            );
+          } catch (updateErr) {
+            console.error('Error auto-failing redundant pending payments:', updateErr);
+          }
+        }
       } else {
         payment.status = 'failed';
       }

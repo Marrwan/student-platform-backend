@@ -579,8 +579,8 @@ class AssignmentsService {
           throw new ValidationError(`Please submit previous assignment "${missingAssignment.title}" first.`);
         }
 
-        // 2. Check if any previous submission is blocked/unpaid
-        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked || s.paymentStatus === 'pending');
+        // 2. Check if any previous submission is explicitly blocked
+        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked);
 
         if (blockedSubmissions.length > 0) {
           // Double check the Payment table just in case the submission state is out of sync

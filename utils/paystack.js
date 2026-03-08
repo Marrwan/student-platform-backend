@@ -274,7 +274,7 @@ class PaystackService {
       const payment = await Payment.findOne({ where: { reference } });
       if (payment) {
         // Idempotency check: If payment is already completed, return success immediately
-        if (payment.status === 'completed') {
+        if (payment.status === 'completed' || payment.status === 'success') {
           console.log(`[PaystackService] Payment ${reference} already completed. Idempotency check passed.`);
           return {
             success: true,
@@ -285,12 +285,40 @@ class PaystackService {
 
         console.log(`[PaystackService] Updating payment ${reference} to completed.`);
         await payment.update({
-          status: 'completed',
+          status: 'success', // Keep consistent status naming
           amount: amount / 100, // Convert from kobo to naira
           paidAt: new Date(),
           gatewayResponse: data.gateway_response,
           channel: data.channel
         });
+
+        // Cancel out other pending payments for this same assignment
+        if (metadata && metadata.assignmentId && payment.userId) {
+          try {
+            const { sequelize } = require('../models');
+            await Payment.update(
+              { status: 'failed' },
+              {
+                where: {
+                  userId: payment.userId,
+                  status: 'pending',
+                  id: {
+                    [sequelize.Sequelize.Op.ne]: payment.id
+                  },
+                  [sequelize.Sequelize.Op.and]: [
+                    sequelize.where(
+                      sequelize.fn('jsonb_extract_path_text', sequelize.col('metadata'), 'assignmentId'),
+                      metadata.assignmentId
+                    )
+                  ]
+                }
+              }
+            );
+            console.log(`[PaystackService] Marked other pending payments for assignment ${metadata.assignmentId} as failed.`);
+          } catch (updateErr) {
+            console.error('[PaystackService] Error auto-failing redundant pending payments:', updateErr);
+          }
+        }
 
         // Update submission status if it's a late fee payment
         if (metadata && metadata.submissionId) {
