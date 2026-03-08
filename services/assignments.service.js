@@ -246,7 +246,7 @@ class AssignmentsService {
             const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
             const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
 
-            const { ValidationError } = require('../utils/errors');
+            const ValidationError = require('../utils/errors');
             throw new ValidationError(`You must submit the previous assignment "${missingAssignment.title}" before viewing this one.`);
           }
         }
