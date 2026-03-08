@@ -20,7 +20,7 @@ exports.getLeaderboard = async (req, res) => {
         const leaderboard = await User.findAll({
             attributes: [
                 'id', 'firstName', 'lastName', 'avatar',
-                [sequelize.fn('COUNT', sequelize.col('userBadges.id')), 'badgeCount']
+                [sequelize.fn('COUNT', sequelize.col('userBadges.id')), 'badge_count']
             ],
             include: [{
                 model: UserBadge,
@@ -28,7 +28,7 @@ exports.getLeaderboard = async (req, res) => {
                 attributes: []
             }],
             group: ['User.id'],
-            order: [[sequelize.literal('badgeCount'), 'DESC']],
+            order: [[sequelize.literal('badge_count'), 'DESC']],
             limit: 10,
             subQuery: false // Necessary for limit with group by in some sequelize versions
         });
