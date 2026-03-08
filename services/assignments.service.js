@@ -605,7 +605,7 @@ class AssignmentsService {
             userId: user.id,
             assignmentId: { [Op.in]: previousAssignmentIds }
           },
-          attributes: ['assignmentId', 'paymentStatus', 'isBlocked']
+          attributes: ['assignmentId', 'paymentStatus', 'isBlocked', 'isLate']
         });
 
         // 1. Check if count matches (did they submit all?)
@@ -618,8 +618,8 @@ class AssignmentsService {
           throw new ValidationError(`Please submit previous assignment "${missingAssignment.title}" first.`);
         }
 
-        // 2. Check if any previous submission is explicitly blocked
-        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked);
+        // 2. Check if any previous submission is explicitly blocked or is late/unpaid
+        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked || (s.isLate && s.paymentStatus !== 'paid'));
 
         if (blockedSubmissions.length > 0) {
           // Double check the Payment table just in case the submission state is out of sync

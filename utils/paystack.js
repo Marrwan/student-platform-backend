@@ -327,8 +327,8 @@ class PaystackService {
           const submission = await AssignmentSubmission.findByPk(metadata.submissionId);
           if (submission) {
             await submission.update({
-              lateFeePaid: true,
-              lateFeePaidAt: new Date()
+              paymentStatus: 'paid',
+              paymentReference: reference
             });
             console.log(`[PaystackService] Submission ${metadata.submissionId} marked as paid.`);
           } else {
