@@ -211,6 +211,45 @@ class AssignmentsService {
         if (!enrollment) {
           throw new Error('Access denied');
         }
+
+        // --- Sequential Submission Check ---
+        // Get all active assignments for this class, ordered by date
+        const allAssignments = await Assignment.findAll({
+          where: {
+            classId: assignment.classId,
+            isActive: true
+          },
+          order: [['startDate', 'ASC']],
+          attributes: ['id', 'title'] // Only need basic info
+        });
+
+        // Find index of current assignment
+        const currentIndex = allAssignments.findIndex(a => a.id === assignmentId);
+
+        if (currentIndex > 0) {
+          // Get all previous assignment IDs
+          const previousAssignmentIds = allAssignments.slice(0, currentIndex).map(a => a.id);
+
+          // Check if user has submitted all previous assignments
+          const previousSubmissions = await AssignmentSubmission.findAll({
+            where: {
+              userId,
+              assignmentId: { [Op.in]: previousAssignmentIds }
+            },
+            attributes: ['assignmentId']
+          });
+
+          // Check if count matches (did they submit all?)
+          if (previousSubmissions.length < previousAssignmentIds.length) {
+            // Find which one is missing
+            const submittedIds = previousSubmissions.map(s => s.assignmentId);
+            const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
+            const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
+
+            const { ValidationError } = require('../utils/errors');
+            throw new ValidationError(`You must submit the previous assignment "${missingAssignment.title}" before viewing this one.`);
+          }
+        }
       }
 
       return assignment;

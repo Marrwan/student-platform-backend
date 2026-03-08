@@ -8,8 +8,8 @@ class DashboardService {
       // First check if user exists
       const user = await User.findByPk(userId);
       if (!user) {
-        return { 
-          project: null, 
+        return {
+          project: null,
           message: "User not found. Please log in again."
         };
       }
@@ -25,20 +25,28 @@ class DashboardService {
       });
 
       if (enrollments.length === 0) {
-        return { 
-          project: null, 
-          message: 'You are not enrolled in any classes. Join a class to see assignments.' 
+        return {
+          project: null,
+          message: 'You are not enrolled in any classes. Join a class to see assignments.'
         };
       }
 
       const classIds = enrollments.map(e => e.class.id);
+
+      // Get IDs of assignments the user has already submitted
+      const submissions = await AssignmentSubmission.findAll({
+        where: { userId },
+        attributes: ['assignmentId']
+      });
+      const completedIds = submissions.map(s => s.assignmentId);
 
       // Find the most urgent assignment (closest deadline that's not due yet)
       const now = new Date();
       const urgentAssignment = await Assignment.findOne({
         where: {
           classId: { [Op.in]: classIds },
-          deadline: { [Op.gt]: now } // Not due yet
+          deadline: { [Op.gt]: now }, // Not due yet
+          ...(completedIds.length > 0 && { id: { [Op.notIn]: completedIds } })
         },
         include: [{
           model: Class,
@@ -52,7 +60,8 @@ class DashboardService {
         // Check if there are any assignments at all (even if due)
         const anyAssignment = await Assignment.findOne({
           where: {
-            classId: { [Op.in]: classIds }
+            classId: { [Op.in]: classIds },
+            ...(completedIds.length > 0 && { id: { [Op.notIn]: completedIds } })
           },
           include: [{
             model: Class,
@@ -82,9 +91,9 @@ class DashboardService {
           return { project: todayProject };
         }
 
-        return { 
-          project: null, 
-          message: 'No assignments available in your enrolled classes.' 
+        return {
+          project: null,
+          message: 'No assignments available in your enrolled classes.'
         };
       }
 
@@ -180,9 +189,9 @@ class DashboardService {
 
       // Get completed assignments
       const completedAssignments = await AssignmentSubmission.count({
-        where: { 
-          userId, 
-          status: 'accepted' 
+        where: {
+          userId,
+          status: 'accepted'
         },
         include: [{
           model: Assignment,
@@ -196,9 +205,9 @@ class DashboardService {
 
       // Get average score - calculate manually to avoid SQL issues
       const acceptedSubmissions = await AssignmentSubmission.findAll({
-        where: { 
-          userId, 
-          status: 'accepted' 
+        where: {
+          userId,
+          status: 'accepted'
         },
         include: [{
           model: Assignment,
@@ -212,7 +221,7 @@ class DashboardService {
         attributes: ['score']
       });
 
-      const averageScore = acceptedSubmissions.length > 0 
+      const averageScore = acceptedSubmissions.length > 0
         ? acceptedSubmissions.reduce((sum, sub) => sum + (sub.score || 0), 0) / acceptedSubmissions.length
         : 0;
 
@@ -224,7 +233,7 @@ class DashboardService {
 
       // Calculate pending assignments
       const pendingAssignments = Math.max(0, totalAssignments - completedAssignments);
-      
+
       // Calculate missed assignments (assignments past deadline without submission)
       const now = new Date();
       const missedAssignments = await Assignment.count({
@@ -242,7 +251,7 @@ class DashboardService {
 
       // Calculate current streak (consecutive completed assignments)
       const currentStreak = completedAssignments > 0 ? 1 : 0; // Simplified for now
-      
+
       // Calculate rank (simplified - could be enhanced with actual ranking logic)
       const rank = completedAssignments > 0 ? Math.floor(Math.random() * 10) + 1 : 0;
 
