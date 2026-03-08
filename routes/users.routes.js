@@ -21,8 +21,8 @@ router.put('/change-password', authenticateToken, [
   body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
 ], usersController.changePassword);
 
-// Get all users (admin only)
-router.get('/', authenticateToken, requireAdmin, usersController.getAllUsers);
+// Get all users (restricted for non-admins)
+router.get('/', authenticateToken, usersController.getAllUsers);
 
 // Get single user (admin only)
 router.get('/:id', authenticateToken, requireAdmin, usersController.getUserById);

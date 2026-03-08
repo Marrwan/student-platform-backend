@@ -254,6 +254,10 @@ module.exports = (sequelize) => {
       foreignKey: 'userId',
       as: 'payments'
     });
+    User.hasMany(models.UserBadge, {
+      foreignKey: 'userId',
+      as: 'userBadges'
+    });
 
     // HRMS Associations
     User.belongsTo(models.Department, {

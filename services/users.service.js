@@ -82,8 +82,8 @@ class UsersService {
     }
   }
 
-  // Get all users (admin only)
-  async getAllUsers(params) {
+  // Get all users (filtered if not admin)
+  async getAllUsers(params, currentUser = null) {
     try {
       const { page = 1, limit = 20, role, status } = params;
       const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -93,9 +93,14 @@ class UsersService {
       if (status === 'active') whereClause.isActive = true;
       if (status === 'inactive') whereClause.isActive = false;
 
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const attributes = isAdmin
+        ? { exclude: ['password'] }
+        : ['id', 'firstName', 'lastName', 'avatar', 'role'];
+
       const users = await User.findAndCountAll({
         where: whereClause,
-        attributes: { exclude: ['password'] },
+        attributes,
         order: [['createdAt', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)

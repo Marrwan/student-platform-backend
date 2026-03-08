@@ -19,7 +19,7 @@ exports.getLeaderboard = async (req, res) => {
         // This is a simplified leaderboard. In a real app, you might use points.
         const leaderboard = await User.findAll({
             attributes: [
-                'id', 'firstName', 'lastName', 'profilePicture',
+                'id', 'firstName', 'lastName', 'avatar',
                 [sequelize.fn('COUNT', sequelize.col('userBadges.id')), 'badgeCount']
             ],
             include: [{
@@ -123,8 +123,8 @@ exports.getRecognitions = async (req, res) => {
         const recognitions = await Recognition.findAll({
             where,
             include: [
-                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'profilePicture'] },
-                { model: User, as: 'receiver', attributes: ['id', 'firstName', 'lastName', 'profilePicture'] }
+                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
+                { model: User, as: 'receiver', attributes: ['id', 'firstName', 'lastName', 'avatar'] }
             ],
             order: [['createdAt', 'DESC']],
             limit: 20
@@ -143,8 +143,8 @@ exports.getInternsOfTheMonth = async (req, res) => {
     try {
         const winners = await InternOfTheMonth.findAll({
             include: [
-                { model: User, as: 'winner', attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'email'] },
-                { model: User, as: 'nominator', attributes: ['firstName', 'lastName'] }
+                { model: User, as: 'winner', attributes: ['id', 'firstName', 'lastName', 'avatar', 'email'] },
+                { model: User, as: 'nominator', attributes: ['id', 'firstName', 'lastName', 'avatar'] }
             ],
             order: [['year', 'DESC'], ['month', 'DESC']]
         });

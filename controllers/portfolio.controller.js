@@ -62,7 +62,7 @@ exports.getPublicPortfolio = async (req, res) => {
             where: { slug, isPublic: true },
             include: [
                 { model: PortfolioProject, as: 'projects' },
-                { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email', 'profilePicture'] }
+                { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email', 'avatar'] }
             ]
         });
 

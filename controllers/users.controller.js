@@ -48,7 +48,7 @@ class UsersController {
   // Get all users (admin only)
   async getAllUsers(req, res) {
     try {
-      const result = await usersService.getAllUsers(req.query);
+      const result = await usersService.getAllUsers(req.query, req.user);
       res.json(result);
     } catch (error) {
       console.error('Error in getAllUsers controller:', error);

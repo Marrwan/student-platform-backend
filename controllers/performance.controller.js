@@ -127,7 +127,7 @@ exports.getTeamPerformance = async (req, res) => {
         // Assuming Team-User association exists or we filter Users by teamId
         const teamMembers = await User.findAll({
             where: { teamId },
-            attributes: ['id', 'firstName', 'lastName', 'profilePicture']
+            attributes: ['id', 'firstName', 'lastName', 'avatar']
         });
 
         const memberIds = teamMembers.map(m => m.id);
@@ -172,7 +172,7 @@ exports.getAtRiskInterns = async (req, res) => {
             include: [{
                 model: User,
                 as: 'user',
-                attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
+                attributes: ['id', 'firstName', 'lastName', 'email', 'avatar']
             }],
             order: [['overallScore', 'ASC']]
         });
