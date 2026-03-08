@@ -618,6 +618,12 @@ class AssignmentsService {
           throw new ValidationError(`Please submit previous assignment "${missingAssignment.title}" first.`);
         }
 
+        // DIAGNOSTIC LOGGING
+        console.log(`[DIAGNOSTIC] User ${user.id} attempting submission for ${assignmentId}`);
+        previousSubmissions.forEach(s => {
+          console.log(`[DIAGNOSTIC] Prev Sub: AssID=${s.assignmentId}, isLate=${s.isLate}, isBlocked=${s.isBlocked}, paymentStatus=${s.paymentStatus}`);
+        });
+
         // 2. Check if any previous submission is explicitly blocked or is late/unpaid
         const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked || (s.isLate && s.paymentStatus !== 'paid'));
 
@@ -638,8 +644,9 @@ class AssignmentsService {
 
             const hasPaid = successfulPayments.some(p => {
               const pMetadata = p.metadata || {};
-              console.log(`[DEBUG] Seq Check - Payment metadata:`, pMetadata);
-              return pMetadata.assignmentId === blockedSub.assignmentId;
+              const match = pMetadata.assignmentId === blockedSub.assignmentId;
+              console.log(`[DEBUG] Seq Check - Checking Payment Ref: ${p.reference}, MetaAssID: ${pMetadata.assignmentId}, Match: ${match}`);
+              return match;
             });
 
             if (!hasPaid) {
