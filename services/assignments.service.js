@@ -236,7 +236,7 @@ class AssignmentsService {
 
           const previousSubmissions = await AssignmentSubmission.findAll({
             where: { userId, assignmentId: { [Op.in]: previousAssignmentIds } },
-            attributes: ['assignmentId', 'isLate', 'paymentStatus']
+            attributes: ['assignmentId', 'isLate', 'paymentStatus', 'status']
           });
 
           // 1. Check if all previous assignments have been submitted
@@ -250,7 +250,9 @@ class AssignmentsService {
             );
           }
 
-          // 2. Check if any previous late submission has an unpaid fee
+          // 2. Check if any previous late submission has an unpaid fee.
+          //    IMPORTANT: accepted submissions are NEVER blocking — admin approved them.
+          //    Only block if: isLate=true AND paymentRequired=true AND paymentStatus!='paid' AND status!='accepted'
           const paymentRequiredMap = {};
           previousAssignments.forEach(a => { paymentRequiredMap[a.id] = a; });
 
@@ -259,15 +261,17 @@ class AssignmentsService {
             if (!prevAssignment || !prevAssignment.paymentRequired) continue;
             if (!sub.isLate) continue;
             if (sub.paymentStatus === 'paid') continue;
+            if (sub.status === 'accepted') continue; // Admin accepted it — never block
 
-            // Double-check the Payment table in case submission state is stale
-            const confirmedPayment = await Payment.findOne({
+            // Double-check the Payment table in case submission state is stale.
+            // Use findAll and check each one — findOne only returns one record.
+            const successfulPayments = await Payment.findAll({
               where: { userId, status: 'success' }
             });
-            const hasPaid = confirmedPayment && (() => {
-              const meta = confirmedPayment.metadata || {};
+            const hasPaid = successfulPayments.some(p => {
+              const meta = p.metadata || {};
               return meta.assignmentId === sub.assignmentId;
-            })();
+            });
 
             if (!hasPaid) {
               throw new ValidationError(
@@ -631,7 +635,7 @@ class AssignmentsService {
             userId: user.id,
             assignmentId: { [Op.in]: previousAssignmentIds }
           },
-          attributes: ['assignmentId', 'paymentStatus', 'isBlocked', 'isLate']
+          attributes: ['assignmentId', 'paymentStatus', 'isBlocked', 'isLate', 'status']
         });
 
         // 1. Check if all previous assignments have been submitted
@@ -644,7 +648,9 @@ class AssignmentsService {
           );
         }
 
-        // 2. Check if any previous late submission has an unpaid fee
+        // 2. Check if any previous late submission has an unpaid fee.
+        //    IMPORTANT: accepted submissions are NEVER blocking — admin approved them.
+        //    Only block if: isLate=true AND paymentRequired=true AND paymentStatus!='paid' AND status!='accepted'
         const paymentRequiredMap = {};
         previousAssignments.forEach(a => { paymentRequiredMap[a.id] = a; });
 
@@ -653,8 +659,10 @@ class AssignmentsService {
           if (!prevAssignment || !prevAssignment.paymentRequired) continue;
           if (!sub.isLate) continue;
           if (sub.paymentStatus === 'paid') continue;
+          if (sub.status === 'accepted') continue; // Admin accepted it — never block
 
-          // Double-check the Payment table in case submission state is stale
+          // Double-check the Payment table in case submission state is stale.
+          // Use findAll and check each one — findOne only returns one record.
           const successfulPayments = await Payment.findAll({
             where: { userId: user.id, status: 'success' }
           });
