@@ -130,6 +130,125 @@ class DashboardService {
     }
   }
 
+  // Get all pending assignments (not yet submitted) from enrolled classes
+  async getPendingAssignments(userId) {
+    try {
+      const enrollments = await ClassEnrollment.findAll({
+        where: { userId },
+        attributes: ['classId']
+      });
+
+      if (enrollments.length === 0) {
+        return { assignments: [] };
+      }
+
+      const classIds = enrollments.map(e => e.classId);
+
+      // Get all assignments from enrolled classes
+      const allAssignments = await Assignment.findAll({
+        where: {
+          classId: { [Op.in]: classIds },
+          isActive: true
+        },
+        include: [
+          {
+            model: Class,
+            as: 'class',
+            attributes: ['id', 'name']
+          },
+          {
+            model: AssignmentSubmission,
+            as: 'submissions',
+            where: { userId },
+            required: false,
+            attributes: ['id', 'status', 'score', 'submittedAt', 'requestCorrection']
+          }
+        ],
+        order: [['deadline', 'ASC']]
+      });
+
+      const now = new Date();
+
+      // Return assignments that have no submission yet (truly pending)
+      const pending = allAssignments
+        .filter(a => !a.submissions || a.submissions.length === 0)
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          deadline: a.deadline,
+          startDate: a.startDate,
+          maxScore: a.maxScore,
+          difficulty: a.difficulty,
+          paymentRequired: a.paymentRequired,
+          paymentAmount: a.paymentAmount,
+          allowLateSubmission: a.allowLateSubmission,
+          isOverdue: now > new Date(a.deadline),
+          timeRemaining: (() => {
+            const diff = new Date(a.deadline) - now;
+            if (diff <= 0) return 'Overdue';
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            if (days > 0) return `${days}d ${hours}h`;
+            return `${hours}h ${Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))}m`;
+          })(),
+          class: a.class?.name || 'Unknown Class',
+          classId: a.classId
+        }));
+
+      return { assignments: pending };
+    } catch (error) {
+      console.error('Error fetching pending assignments:', error);
+      return { assignments: [] };
+    }
+  }
+
+  // Get assignments where the student's submission needs correction
+  async getCorrectionsNeeded(userId) {
+    try {
+      const submissions = await AssignmentSubmission.findAll({
+        where: {
+          userId,
+          requestCorrection: true,
+          status: { [Op.ne]: 'accepted' } // Not already accepted
+        },
+        include: [
+          {
+            model: Assignment,
+            as: 'assignment',
+            attributes: ['id', 'title', 'deadline', 'maxScore'],
+            include: [
+              {
+                model: Class,
+                as: 'class',
+                attributes: ['name']
+              }
+            ]
+          }
+        ],
+        order: [['updatedAt', 'DESC']]
+      });
+
+      const corrections = submissions.map(sub => ({
+        submissionId: sub.id,
+        assignmentId: sub.assignment?.id,
+        assignmentTitle: sub.assignment?.title || 'Unknown Assignment',
+        className: sub.assignment?.class?.name || 'Unknown Class',
+        deadline: sub.assignment?.deadline,
+        feedback: sub.adminFeedback || sub.feedback,
+        score: sub.score,
+        maxScore: sub.assignment?.maxScore,
+        reviewedAt: sub.reviewedAt,
+        status: sub.status
+      }));
+
+      return { corrections };
+    } catch (error) {
+      console.error('Error fetching corrections needed:', error);
+      return { corrections: [] };
+    }
+  }
+
   // Get recent submissions
   async getRecentSubmissions(userId) {
     try {

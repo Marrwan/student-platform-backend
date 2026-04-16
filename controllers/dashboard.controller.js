@@ -12,6 +12,28 @@ class DashboardController {
     }
   }
 
+  // Get all pending assignments (not yet submitted)
+  async getPendingAssignments(req, res) {
+    try {
+      const result = await dashboardService.getPendingAssignments(req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getPendingAssignments controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Get assignments needing correction
+  async getCorrectionsNeeded(req, res) {
+    try {
+      const result = await dashboardService.getCorrectionsNeeded(req.user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getCorrectionsNeeded controller:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+
   // Get recent submissions
   async getRecentSubmissions(req, res) {
     try {
