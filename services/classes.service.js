@@ -67,7 +67,7 @@ class ClassesService {
         }
 
         const whereClause = {
-          id: { [require('sequelize').Op.in]: enrolledClassIds },
+          id: { [Op.in]: enrolledClassIds },
           isActive: true
         };
         if (status) whereClause.isActive = status === 'active';
@@ -583,19 +583,19 @@ class ClassesService {
       const createdUsers = [];
       const failedEmails = [];
 
-      for (const email of emails) {
+      // Process all invitations concurrently instead of sequentially
+      await Promise.allSettled(emails.map(async (email) => {
         try {
           const user = await User.findOne({ where: { email } });
 
           if (user) {
-            // Existing user - check if already enrolled
             const existingEnrollment = await ClassEnrollment.findOne({
               where: { classId, userId: user.id }
             });
 
             if (!existingEnrollment) {
-              // Send invitation email to existing user
-              await sendEmail({
+              // Fire-and-forget email — don't block on it
+              sendEmail({
                 to: email,
                 subject: `Invitation to Join: ${classData.name}`,
                 html: `
@@ -606,28 +606,25 @@ class ClassesService {
                   <p>Log in to your account and use the enrollment code to join the class.</p>
                   <p>If you don't have an account, you can <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/register">register here</a>.</p>
                 `
-              });
+              }).catch(err => console.warn(`Failed to send invite email to ${email}:`, err.message));
               invitedUsers.push(email);
             }
           } else {
-            // New user
             if (createAccounts) {
-              // Create account for new user
               const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
               const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
-              const newUser = await User.create({
+              await User.create({
                 email,
                 password: hashedPassword,
-                firstName: email.split('@')[0], // Use email prefix as first name
+                firstName: email.split('@')[0],
                 lastName: 'User',
                 role: 'student',
-                emailVerified: true, // Auto-verify since we're creating the account
+                emailVerified: true,
                 isActive: true
               });
 
-              // Send invitation email with login credentials
-              await sendEmail({
+              sendEmail({
                 to: email,
                 subject: `Welcome to ${classData.name} - Your Account Details`,
                 html: `
@@ -643,14 +640,12 @@ class ClassesService {
                   <p>Please log in with these credentials and change your password after your first login.</p>
                   <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Log In Now</a></p>
                 `
-              });
+              }).catch(err => console.warn(`Failed to send welcome email to ${email}:`, err.message));
               createdUsers.push(email);
             } else {
-              // Send registration invitation
               const registrationToken = crypto.randomBytes(32).toString('hex');
               const registrationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-              // Store registration invitation
               await ClassInvitation.create({
                 email,
                 classId,
@@ -662,7 +657,7 @@ class ClassesService {
 
               const registrationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/register?token=${registrationToken}&classId=${classId}`;
 
-              await sendEmail({
+              sendEmail({
                 to: email,
                 subject: `Join ${classData.name} - Create Your Account`,
                 html: `
@@ -675,7 +670,7 @@ class ClassesService {
                   <p>If the button doesn't work, copy and paste this link into your browser:</p>
                   <p style="word-break: break-all; color: #666;">${registrationUrl}</p>
                 `
-              });
+              }).catch(err => console.warn(`Failed to send registration invite to ${email}:`, err.message));
               invitedUsers.push(email);
             }
           }
@@ -683,7 +678,7 @@ class ClassesService {
           console.error(`Error processing invitation for ${email}:`, error);
           failedEmails.push(email);
         }
-      }
+      }));
 
       return {
         message: 'Invitations sent successfully',

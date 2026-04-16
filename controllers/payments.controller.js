@@ -8,7 +8,7 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getUserPayments controller:', error);
-      res.status(500).json({ message: 'Failed to fetch payments', error: error.message });
+      res.status(500).json({ message: 'Failed to fetch payments' });
     }
   }
 
@@ -19,7 +19,8 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in initializeLateFeePayment controller:', error);
-      res.status(500).json({ message: 'Failed to initialize payment', error: error.message });
+      const status = error.message.includes('Missing') ? 400 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
@@ -30,7 +31,8 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in verifyPayment controller:', error);
-      res.status(500).json({ message: 'Failed to verify payment', error: error.message });
+      const status = error.message === 'Payment not found' ? 404 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
@@ -41,7 +43,7 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getPaymentHistory controller:', error);
-      res.status(500).json({ message: 'Failed to fetch payment history', error: error.message });
+      res.status(500).json({ message: 'Failed to fetch payment history' });
     }
   }
 
@@ -52,7 +54,8 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getPaymentStatus controller:', error);
-      res.status(500).json({ message: 'Failed to fetch payment', error: error.message });
+      const status = error.message === 'Payment not found' ? 404 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
@@ -63,7 +66,7 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getAllPayments controller:', error);
-      res.status(500).json({ message: 'Failed to fetch payments', error: error.message });
+      res.status(500).json({ message: 'Failed to fetch payments' });
     }
   }
 
@@ -74,7 +77,7 @@ class PaymentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getPaymentStats controller:', error);
-      res.status(500).json({ message: 'Failed to fetch payment statistics', error: error.message });
+      res.status(500).json({ message: 'Failed to fetch payment statistics' });
     }
   }
 

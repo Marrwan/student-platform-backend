@@ -1,5 +1,20 @@
 const { body, validationResult } = require('express-validator');
 const assignmentsService = require('../services/assignments.service');
+const ValidationError = require('../utils/errors');
+
+// Helper to send the right HTTP status for known error types
+function handleError(res, error) {
+  if (error instanceof ValidationError || error.name === 'ValidationError') {
+    return res.status(400).json({ message: error.message, type: error.type || 'validation' });
+  }
+  if (error.message === 'Assignment not found' || error.message === 'Submission not found') {
+    return res.status(404).json({ message: error.message });
+  }
+  if (error.message === 'Access denied' || error.message?.startsWith('Access denied')) {
+    return res.status(403).json({ message: error.message });
+  }
+  return res.status(500).json({ message: error.message });
+}
 
 class AssignmentsController {
   // Get all assignments (admin) or user's class assignments (student)
@@ -9,7 +24,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getAllAssignments controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -20,12 +35,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.createAssignment(req.body, req.user.id, req.user.role);
       res.status(201).json(result);
     } catch (error) {
       console.error('Error in createAssignment controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -36,13 +50,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getAssignmentById controller:', error);
-      const ValidationError = require('../utils/errors');
-      if (error instanceof ValidationError || error.name === 'ValidationError') {
-        return res.status(400).json({ message: error.message, type: error.type || 'sequential_lock' });
-      }
-      if (error.message === 'Assignment not found') return res.status(404).json({ message: error.message });
-      if (error.message === 'Access denied') return res.status(403).json({ message: error.message });
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -53,7 +61,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getMySubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -64,12 +72,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.updateSubmission(req.params.id, req.user.id, req.body);
       res.json(result);
     } catch (error) {
       console.error('Error in updateSubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -80,7 +87,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in canEditSubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -91,12 +98,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.updateAssignment(req.params.id, req.body, req.user.id, req.user.role);
       res.json(result);
     } catch (error) {
       console.error('Error in updateAssignment controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -107,7 +113,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in deleteAssignment controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -118,7 +124,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in deleteSubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -129,16 +135,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.submitAssignment(req.params.id, req.body, req.user, req.file);
       res.status(201).json(result);
     } catch (error) {
       console.error('Error in submitAssignment controller:', error);
-      const ValidationError = require('../utils/errors');
-      if (error instanceof ValidationError || error.name === 'ValidationError') {
-        return res.status(400).json({ message: error.message, type: error.type || 'validation' });
-      }
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -149,7 +150,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getAssignmentSubmissions controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -160,12 +161,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.markSubmission(req.params.submissionId, req.body, req.user.id, req.user.role);
       res.json(result);
     } catch (error) {
       console.error('Error in markSubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -176,12 +176,11 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const result = await assignmentsService.reviewSubmission(req.params.id, req.params.submissionId, req.body, req.user.id, req.user.role);
       res.json(result);
     } catch (error) {
       console.error('Error in reviewSubmission controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -192,7 +191,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in unlockAssignment controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -203,19 +202,12 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const { userId, score, notes } = req.body;
-      const result = await assignmentsService.awardAttendanceScore(
-        req.params.classId,
-        userId,
-        score,
-        notes,
-        req.user.id
-      );
+      const result = await assignmentsService.awardAttendanceScore(req.params.classId, userId, score, notes, req.user.id);
       res.json(result);
     } catch (error) {
       console.error('Error in awardAttendanceScore controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -226,7 +218,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getClassLeaderboard controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -237,7 +229,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in refreshClassLeaderboard controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -248,7 +240,7 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in checkUserBlockStatus controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 
@@ -259,17 +251,12 @@ class AssignmentsController {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       const { paymentReference, amount } = req.body;
-      const result = await assignmentsService.processOverduePayment(
-        req.user.id,
-        paymentReference,
-        amount
-      );
+      const result = await assignmentsService.processOverduePayment(req.user.id, paymentReference, amount);
       res.json(result);
     } catch (error) {
       console.error('Error in processOverduePayment controller:', error);
-      res.status(500).json({ message: error.message });
+      handleError(res, error);
     }
   }
 }

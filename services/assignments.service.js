@@ -154,26 +154,31 @@ class AssignmentsService {
         isActive: true
       });
 
-      // Send notification emails to enrolled students
-      const enrollments = await ClassEnrollment.findAll({
+      // Send notification emails to enrolled students — fire-and-forget, don't block response
+      ClassEnrollment.findAll({
         where: { classId },
         include: [{ model: User, as: 'student', attributes: ['email', 'firstName', 'lastName'] }]
-      });
-
-      for (const enrollment of enrollments) {
-        await sendEmail({
-          to: enrollment.student.email,
-          subject: `New Assignment: ${title}`,
-          html: `
-            <h2>New Assignment Available</h2>
-            <p><strong>Class:</strong> ${classData.name}</p>
-            <p><strong>Assignment:</strong> ${title}</p>
-            <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
-            <p><strong>Max Score:</strong> ${maxScore} points</p>
-            <p>Log in to your dashboard to view the full assignment details and submit your work.</p>
-          `
+      }).then(enrollments => {
+        const emailPromises = enrollments.map(enrollment =>
+          sendEmail({
+            to: enrollment.student.email,
+            subject: `New Assignment: ${title}`,
+            html: `
+              <h2>New Assignment Available</h2>
+              <p>Hi ${enrollment.student.firstName},</p>
+              <p><strong>Class:</strong> ${classData.name}</p>
+              <p><strong>Assignment:</strong> ${title}</p>
+              <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
+              <p><strong>Max Score:</strong> ${maxScore} points</p>
+              <p>Log in to your dashboard to view the full assignment details and submit your work.</p>
+            `
+          }).catch(err => console.warn(`Failed to send assignment email to ${enrollment.student.email}:`, err.message))
+        );
+        Promise.allSettled(emailPromises).then(results => {
+          const failed = results.filter(r => r.status === 'rejected').length;
+          if (failed > 0) console.warn(`${failed} assignment notification emails failed to send`);
         });
-      }
+      }).catch(err => console.error('Failed to fetch enrollments for email notifications:', err));
 
       return {
         message: 'Assignment created successfully',
@@ -911,25 +916,27 @@ class AssignmentsService {
 
       await assignment.update({ isUnlocked: true });
 
-      // Send notification emails to enrolled students
-      const enrollments = await ClassEnrollment.findAll({
+      // Send notification emails — fire-and-forget
+      ClassEnrollment.findAll({
         where: { classId: assignment.classId },
         include: [{ model: User, as: 'student', attributes: ['email', 'firstName', 'lastName'] }]
-      });
-
-      for (const enrollment of enrollments) {
-        await sendEmail({
-          to: enrollment.student.email,
-          subject: `Assignment Unlocked: ${assignment.title}`,
-          html: `
-            <h2>Assignment Now Available</h2>
-            <p><strong>Class:</strong> ${assignment.class.name}</p>
-            <p><strong>Assignment:</strong> ${assignment.title}</p>
-            <p><strong>Deadline:</strong> ${assignment.deadline.toLocaleString()}</p>
-            <p>The assignment is now unlocked and ready for submission!</p>
-          `
-        });
-      }
+      }).then(enrollments => {
+        const emailPromises = enrollments.map(enrollment =>
+          sendEmail({
+            to: enrollment.student.email,
+            subject: `Assignment Unlocked: ${assignment.title}`,
+            html: `
+              <h2>Assignment Now Available</h2>
+              <p>Hi ${enrollment.student.firstName},</p>
+              <p><strong>Class:</strong> ${assignment.class.name}</p>
+              <p><strong>Assignment:</strong> ${assignment.title}</p>
+              <p><strong>Deadline:</strong> ${assignment.deadline.toLocaleString()}</p>
+              <p>The assignment is now unlocked and ready for submission!</p>
+            `
+          }).catch(err => console.warn(`Failed to send unlock email to ${enrollment.student.email}:`, err.message))
+        );
+        Promise.allSettled(emailPromises);
+      }).catch(err => console.error('Failed to fetch enrollments for unlock emails:', err));
 
       return {
         message: 'Assignment unlocked successfully',
@@ -1509,36 +1516,44 @@ class AssignmentsService {
     }
   }
 
-  // Process payment for overdue assignments
+  // Process payment for overdue assignment — scoped to a specific assignment
   async processOverduePayment(userId, paymentReference, amount) {
     try {
+      // Find the payment record to determine which assignment it covers
+      const paymentRecord = await Payment.findOne({
+        where: { userId, reference: paymentReference, status: 'success' }
+      });
+
+      if (!paymentRecord) {
+        throw new Error('Successful payment record not found for this reference.');
+      }
+
+      const assignmentId = paymentRecord.metadata?.assignmentId;
+
+      if (assignmentId) {
+        // Update only the specific submission for this assignment
+        const updated = await AssignmentSubmission.update(
+          { paymentStatus: 'paid', paymentReference, isBlocked: false },
+          { where: { userId, assignmentId, isLate: true, paymentStatus: 'pending' } }
+        );
+        return {
+          message: 'Payment processed successfully',
+          submissionsUpdated: updated[0]
+        };
+      }
+
+      // Fallback: update all pending late submissions (legacy behaviour)
       const overdueSubmissions = await AssignmentSubmission.findAll({
-        where: {
-          userId,
-          isLate: true,
-          paymentStatus: 'pending'
-        }
+        where: { userId, isLate: true, paymentStatus: 'pending' }
       });
 
       if (overdueSubmissions.length === 0) {
-        throw new Error('No overdue submissions found');
+        return { message: 'No overdue submissions found', submissionsUpdated: 0 };
       }
 
-      // Update all overdue submissions as paid
       await AssignmentSubmission.update(
-        {
-          paymentStatus: 'paid',
-          paymentReference,
-          paymentAmount: amount / overdueSubmissions.length,
-          isBlocked: false
-        },
-        {
-          where: {
-            userId,
-            isLate: true,
-            paymentStatus: 'pending'
-          }
-        }
+        { paymentStatus: 'paid', paymentReference, paymentAmount: amount / overdueSubmissions.length, isBlocked: false },
+        { where: { userId, isLate: true, paymentStatus: 'pending' } }
       );
 
       return {
@@ -1556,12 +1571,7 @@ class AssignmentsService {
     try {
       const submission = await AssignmentSubmission.findOne({
         where: { assignmentId, userId },
-        include: [
-          {
-            model: Assignment,
-            as: 'assignment'
-          }
-        ]
+        include: [{ model: Assignment, as: 'assignment' }]
       });
 
       if (!submission) {
@@ -1570,18 +1580,43 @@ class AssignmentsService {
 
       // Cannot edit if status is 'accepted'
       if (submission.status === 'accepted') {
-        return { canEdit: false, reason: 'Submission has been accepted and cannot be edited' };
+        return { canEdit: false, reason: 'Your submission has been accepted and cannot be edited.' };
       }
 
-      // Check if deadline has passed
       const now = new Date();
       const deadline = new Date(submission.assignment.deadline);
 
-      if (now > deadline) {
-        return { canEdit: false, reason: 'Assignment deadline has passed' };
+      // If deadline has passed and payment is required but not paid, block editing
+      if (now > deadline && submission.assignment.paymentRequired && submission.isLate) {
+        if (submission.paymentStatus !== 'paid') {
+          // Double-check Payment table
+          const confirmedPayment = await Payment.findOne({
+            where: {
+              userId,
+              status: 'success',
+              metadata: { assignmentId }
+            }
+          });
+          if (!confirmedPayment) {
+            return {
+              canEdit: false,
+              reason: `A late submission fee of ₦${submission.assignment.paymentAmount} is required before you can edit this submission.`
+            };
+          }
+        }
       }
 
-      return { canEdit: true, reason: 'Submission can be edited' };
+      // If deadline has passed and late submissions are not allowed, block editing
+      if (now > deadline && !submission.assignment.allowLateSubmission) {
+        return { canEdit: false, reason: 'The assignment deadline has passed and late submissions are not allowed.' };
+      }
+
+      // Allow editing if correction was requested
+      if (submission.requestCorrection) {
+        return { canEdit: true, reason: 'Correction requested — you can update your submission.' };
+      }
+
+      return { canEdit: true, reason: 'Submission can be edited.' };
     } catch (error) {
       console.error('Error checking if user can edit submission:', error);
       throw error;

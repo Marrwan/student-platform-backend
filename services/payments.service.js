@@ -124,12 +124,21 @@ class PaymentsService {
       );
 
       payment.paystackResponse = verifyRes.data;
+
       if (verifyRes.data.data.status === 'success') {
         payment.status = 'success';
 
-        // If this payment is for an assignment, mark all other pending payments for this assignment as failed
         const assignmentId = payment.metadata?.assignmentId;
+
         if (assignmentId) {
+          // Sync the AssignmentSubmission payment state so sequential checks don't need to re-query
+          const { AssignmentSubmission } = require('../models');
+          await AssignmentSubmission.update(
+            { paymentStatus: 'paid', paymentReference: reference, isBlocked: false },
+            { where: { userId: payment.userId, assignmentId, isLate: true } }
+          ).catch(err => console.error('Failed to sync submission payment status:', err));
+
+          // Cancel any other pending payments for the same assignment
           try {
             await Payment.update(
               { status: 'failed' },
@@ -137,9 +146,7 @@ class PaymentsService {
                 where: {
                   userId: payment.userId,
                   status: 'pending',
-                  id: {
-                    [sequelize.Sequelize.Op.ne]: payment.id // exclude current payment
-                  },
+                  id: { [sequelize.Sequelize.Op.ne]: payment.id },
                   [sequelize.Sequelize.Op.and]: [
                     sequelize.where(
                       sequelize.fn('jsonb_extract_path_text', sequelize.col('metadata'), 'assignmentId'),
@@ -156,6 +163,7 @@ class PaymentsService {
       } else {
         payment.status = 'failed';
       }
+
       await payment.save();
 
       return {

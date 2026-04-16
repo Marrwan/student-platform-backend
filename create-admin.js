@@ -49,7 +49,7 @@ async function createAdminUser() {
       metadata: {
         createdBy: 'system',
         source: 'script',
-        notes: 'Primary admin user for the Nexus Systems',
+        notes: 'Primary admin user for the Strangedev Systems',
         country: 'Nigeria',
         timezone: 'Africa/Lagos'
       },
