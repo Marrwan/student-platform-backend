@@ -1,4 +1,5 @@
 const { User, Class, ClassEnrollment, Assignment, AssignmentSubmission, ClassInvitation, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { sendEmail } = require('../utils/email');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -49,8 +50,26 @@ class ClassesService {
           totalPages: Math.ceil(classes.count / parseInt(limit))
         };
       } else {
-        // Students see all active classes and their enrollment status
-        const whereClause = { isActive: true };
+        // Students ONLY see classes they are enrolled in
+        const enrollments = await ClassEnrollment.findAll({
+          where: { userId: user.id },
+          attributes: ['classId']
+        });
+        const enrolledClassIds = enrollments.map(e => e.classId);
+
+        if (enrolledClassIds.length === 0) {
+          return {
+            classes: [],
+            total: 0,
+            page: parseInt(page),
+            totalPages: 0
+          };
+        }
+
+        const whereClause = {
+          id: { [require('sequelize').Op.in]: enrolledClassIds },
+          isActive: true
+        };
         if (status) whereClause.isActive = status === 'active';
 
         const classes = await Class.findAndCountAll({
@@ -59,7 +78,7 @@ class ClassesService {
             {
               model: User,
               as: 'instructor',
-              attributes: ['id', 'firstName', 'lastName', 'email']
+              attributes: ['id', 'firstName', 'lastName']
             },
             {
               model: ClassEnrollment,
@@ -73,10 +92,9 @@ class ClassesService {
           offset: parseInt(offset)
         });
 
-        // Add enrollment status and student count to each class
         const classesWithStatus = classes.rows.map(cls => {
           const classData = cls.toJSON();
-          classData.isEnrolled = cls.enrollments.length > 0;
+          classData.isEnrolled = true; // They're all enrolled by definition
           classData.studentCount = cls.enrollments.length;
           return classData;
         });

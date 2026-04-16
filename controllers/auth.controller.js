@@ -187,6 +187,33 @@ class AuthController {
       });
     }
   }
+
+  // Impersonate user (admin only)
+  async impersonateUser(req, res) {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Only admins can impersonate users.' });
+      }
+      const result = await authService.impersonateUser(req.user.id, req.params.userId);
+      res.json(result);
+    } catch (error) {
+      console.error('Impersonate user error:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // Stop impersonation
+  async stopImpersonation(req, res) {
+    try {
+      const restoreToken = req.body.restoreToken || req.headers['x-restore-token'];
+      const currentToken = req.header('Authorization')?.replace('Bearer ', '');
+      const result = await authService.stopImpersonation(currentToken, restoreToken);
+      res.json(result);
+    } catch (error) {
+      console.error('Stop impersonation error:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new AuthController(); 

@@ -15,15 +15,19 @@ class AssignmentsService {
       if (classId) whereClause.classId = classId;
 
       if (user.role === 'student') {
-        // Students see ALL assignments from their enrolled classes (not just unlocked ones)
         const enrollments = await ClassEnrollment.findAll({
           where: { userId: user.id },
           attributes: ['classId']
         });
 
         const classIds = enrollments.map(e => e.classId);
+
+        // Guard: if student has no enrollments, return empty immediately
+        if (classIds.length === 0) {
+          return { assignments: [], total: 0, page: parseInt(page), totalPages: 0 };
+        }
+
         whereClause.classId = { [Op.in]: classIds };
-        // Remove the isUnlocked filter - students can see all assignments
       }
 
       const includeArray = [
@@ -212,42 +216,60 @@ class AssignmentsService {
           throw new Error('Access denied');
         }
 
-        // --- Sequential Submission Check ---
-        // Get all active assignments for this class, ordered by date
+        // --- Sequential Submission & Payment Check ---
         const allAssignments = await Assignment.findAll({
-          where: {
-            classId: assignment.classId,
-            isActive: true
-          },
+          where: { classId: assignment.classId, isActive: true },
           order: [['startDate', 'ASC']],
-          attributes: ['id', 'title'] // Only need basic info
+          attributes: ['id', 'title', 'paymentRequired', 'paymentAmount', 'deadline']
         });
 
-        // Find index of current assignment
         const currentIndex = allAssignments.findIndex(a => a.id === assignmentId);
 
         if (currentIndex > 0) {
-          // Get all previous assignment IDs
-          const previousAssignmentIds = allAssignments.slice(0, currentIndex).map(a => a.id);
+          const previousAssignments = allAssignments.slice(0, currentIndex);
+          const previousAssignmentIds = previousAssignments.map(a => a.id);
 
-          // Check if user has submitted all previous assignments
           const previousSubmissions = await AssignmentSubmission.findAll({
-            where: {
-              userId,
-              assignmentId: { [Op.in]: previousAssignmentIds }
-            },
-            attributes: ['assignmentId']
+            where: { userId, assignmentId: { [Op.in]: previousAssignmentIds } },
+            attributes: ['assignmentId', 'isLate', 'paymentStatus']
           });
 
-          // Check if count matches (did they submit all?)
+          // 1. Check if all previous assignments have been submitted
           if (previousSubmissions.length < previousAssignmentIds.length) {
-            // Find which one is missing
             const submittedIds = previousSubmissions.map(s => s.assignmentId);
-            const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
-            const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
+            const missingId = previousAssignmentIds.find(id => !submittedIds.includes(id));
+            const missingAssignment = previousAssignments.find(a => a.id === missingId);
+            throw new ValidationError(
+              `You must submit "${missingAssignment.title}" before you can access this assignment.`,
+              'sequential_lock'
+            );
+          }
 
-            const ValidationError = require('../utils/errors');
-            throw new ValidationError(`You must submit the previous assignment "${missingAssignment.title}" before viewing this one.`);
+          // 2. Check if any previous late submission has an unpaid fee
+          const paymentRequiredMap = {};
+          previousAssignments.forEach(a => { paymentRequiredMap[a.id] = a; });
+
+          for (const sub of previousSubmissions) {
+            const prevAssignment = paymentRequiredMap[sub.assignmentId];
+            if (!prevAssignment || !prevAssignment.paymentRequired) continue;
+            if (!sub.isLate) continue;
+            if (sub.paymentStatus === 'paid') continue;
+
+            // Double-check the Payment table in case submission state is stale
+            const confirmedPayment = await Payment.findOne({
+              where: { userId, status: 'success' }
+            });
+            const hasPaid = confirmedPayment && (() => {
+              const meta = confirmedPayment.metadata || {};
+              return meta.assignmentId === sub.assignmentId;
+            })();
+
+            if (!hasPaid) {
+              throw new ValidationError(
+                `You have an unpaid late submission fee for "${prevAssignment.title}" (₦${prevAssignment.paymentAmount}). Please pay this fee before accessing the next assignment.`,
+                'payment_required'
+              );
+            }
           }
         }
       }
@@ -589,17 +611,16 @@ class AssignmentsService {
           isActive: true
         },
         order: [['startDate', 'ASC']],
-        attributes: ['id', 'title', 'startDate']
+        attributes: ['id', 'title', 'startDate', 'paymentRequired', 'paymentAmount']
       });
 
       // Find index of current assignment
       const currentIndex = allAssignments.findIndex(a => a.id === assignmentId);
 
       if (currentIndex > 0) {
-        // Get all previous assignment IDs
-        const previousAssignmentIds = allAssignments.slice(0, currentIndex).map(a => a.id);
+        const previousAssignments = allAssignments.slice(0, currentIndex);
+        const previousAssignmentIds = previousAssignments.map(a => a.id);
 
-        // Check if user has submitted all previous assignments
         const previousSubmissions = await AssignmentSubmission.findAll({
           where: {
             userId: user.id,
@@ -608,51 +629,39 @@ class AssignmentsService {
           attributes: ['assignmentId', 'paymentStatus', 'isBlocked', 'isLate']
         });
 
-        // 1. Check if count matches (did they submit all?)
+        // 1. Check if all previous assignments have been submitted
         if (previousSubmissions.length < previousAssignmentIds.length) {
-          // Find which one is missing
           const submittedIds = previousSubmissions.map(s => s.assignmentId);
-          const missingAssignmentId = previousAssignmentIds.find(id => !submittedIds.includes(id));
-          const missingAssignment = allAssignments.find(a => a.id === missingAssignmentId);
-
-          throw new ValidationError(`Please submit previous assignment "${missingAssignment.title}" first.`);
+          const missingId = previousAssignmentIds.find(id => !submittedIds.includes(id));
+          const missingAssignment = previousAssignments.find(a => a.id === missingId);
+          throw new ValidationError(
+            `You must submit "${missingAssignment.title}" before you can submit this assignment.`
+          );
         }
 
-        // DIAGNOSTIC LOGGING
-        console.log(`[DIAGNOSTIC] User ${user.id} attempting submission for ${assignmentId}`);
-        previousSubmissions.forEach(s => {
-          console.log(`[DIAGNOSTIC] Prev Sub: AssID=${s.assignmentId}, isLate=${s.isLate}, isBlocked=${s.isBlocked}, paymentStatus=${s.paymentStatus}`);
-        });
+        // 2. Check if any previous late submission has an unpaid fee
+        const paymentRequiredMap = {};
+        previousAssignments.forEach(a => { paymentRequiredMap[a.id] = a; });
 
-        // 2. Check if any previous submission is explicitly blocked or is late/unpaid
-        const blockedSubmissions = previousSubmissions.filter(s => s.isBlocked || (s.isLate && s.paymentStatus !== 'paid'));
+        for (const sub of previousSubmissions) {
+          const prevAssignment = paymentRequiredMap[sub.assignmentId];
+          if (!prevAssignment || !prevAssignment.paymentRequired) continue;
+          if (!sub.isLate) continue;
+          if (sub.paymentStatus === 'paid') continue;
 
-        if (blockedSubmissions.length > 0) {
-          // Double check the Payment table just in case the submission state is out of sync
-          for (const blockedSub of blockedSubmissions) {
-            // Find all successful payments for this user, then filter in memory
-            // This avoids JSONB dialect issues (Op.contains vs raw string matching)
-            const successfulPayments = await Payment.findAll({
-              where: {
-                userId: user.id,
-                status: 'success'
-              }
-            });
+          // Double-check the Payment table in case submission state is stale
+          const successfulPayments = await Payment.findAll({
+            where: { userId: user.id, status: 'success' }
+          });
+          const hasPaid = successfulPayments.some(p => {
+            const meta = p.metadata || {};
+            return meta.assignmentId === sub.assignmentId;
+          });
 
-            console.log(`[DEBUG] Seq Check - Blocked Sub: ${blockedSub.assignmentId}`);
-            console.log(`[DEBUG] Seq Check - Found ${successfulPayments.length} successful payments for user`);
-
-            const hasPaid = successfulPayments.some(p => {
-              const pMetadata = p.metadata || {};
-              const match = pMetadata.assignmentId === blockedSub.assignmentId;
-              console.log(`[DEBUG] Seq Check - Checking Payment Ref: ${p.reference}, MetaAssID: ${pMetadata.assignmentId}, Match: ${match}`);
-              return match;
-            });
-
-            if (!hasPaid) {
-              console.log(`[DEBUG] Seq Check - User blocked: No matching payment found for assignment ${blockedSub.assignmentId}`);
-              throw new ValidationError('Please clear pending payments for previous assignments before proceeding.');
-            }
+          if (!hasPaid) {
+            throw new ValidationError(
+              `You have an unpaid late submission fee for "${prevAssignment.title}" (₦${prevAssignment.paymentAmount}). Please pay this fee before submitting the next assignment.`
+            );
           }
         }
       }
@@ -721,7 +730,10 @@ class AssignmentsService {
           });
 
           if (!payment) {
-            throw new Error('Deadline has passed. Please pay the late fee to enable submission.');
+            throw new ValidationError(
+              `The deadline for "${assignment.title}" has passed. A late submission fee of ₦${assignment.paymentAmount} is required. Please pay the fee to unlock submission access.`,
+              'payment_required'
+            );
           }
         }
       }

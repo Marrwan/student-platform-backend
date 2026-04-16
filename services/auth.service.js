@@ -604,6 +604,123 @@ class AuthService {
       throw error;
     }
   }
+
+  // Impersonate a user (admin only)
+  async impersonateUser(adminId, targetUserId) {
+    try {
+      // Verify the requesting user is an admin
+      const admin = await User.findByPk(adminId, {
+        attributes: { exclude: ['password', 'emailVerificationToken', 'resetPasswordToken'] }
+      });
+
+      if (!admin || admin.role !== 'admin') {
+        throw new Error('Only admins can impersonate users.');
+      }
+
+      // Prevent impersonating another admin
+      const targetUser = await User.findByPk(targetUserId, {
+        attributes: { exclude: ['password', 'emailVerificationToken', 'resetPasswordToken'] }
+      });
+
+      if (!targetUser) {
+        throw new Error('Target user not found.');
+      }
+
+      if (targetUser.role === 'admin') {
+        throw new Error('Cannot impersonate another admin.');
+      }
+
+      if (!targetUser.isActive) {
+        throw new Error('Cannot impersonate an inactive user.');
+      }
+
+      // Issue an impersonation token for the target user.
+      // We embed the original admin's ID so we can restore the session later.
+      const impersonationToken = jwt.sign(
+        {
+          id: targetUser.id,
+          email: targetUser.email,
+          role: targetUser.role,
+          impersonatedBy: adminId  // Track who is impersonating
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '2h' } // Shorter expiry for impersonation sessions
+      );
+
+      // Also issue a "restore" token so the admin can get back to their own session
+      const restoreToken = jwt.sign(
+        { id: adminId, email: admin.email, role: admin.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '2h' }
+      );
+
+      return {
+        success: true,
+        message: `Now impersonating ${targetUser.firstName} ${targetUser.lastName}`,
+        token: impersonationToken,
+        restoreToken,
+        user: {
+          id: targetUser.id,
+          email: targetUser.email,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName,
+          role: targetUser.role,
+          permissions: targetUser.permissions
+        },
+        impersonatedBy: {
+          id: admin.id,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          email: admin.email
+        }
+      };
+    } catch (error) {
+      console.error('Impersonation error:', error);
+      throw error;
+    }
+  }
+
+  // Stop impersonation and restore admin session
+  async stopImpersonation(currentToken, restoreToken) {
+    try {
+      if (!restoreToken) {
+        throw new Error('No restore token provided. Cannot stop impersonation.');
+      }
+
+      // Verify the restore token
+      let decoded;
+      try {
+        decoded = jwt.verify(restoreToken, process.env.JWT_SECRET);
+      } catch (err) {
+        throw new Error('Invalid or expired restore token. Please log in again.');
+      }
+
+      const admin = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password', 'emailVerificationToken', 'resetPasswordToken'] }
+      });
+
+      if (!admin || admin.role !== 'admin') {
+        throw new Error('Restore token does not belong to an admin account.');
+      }
+
+      return {
+        success: true,
+        message: 'Impersonation ended. Restored admin session.',
+        token: restoreToken,
+        user: {
+          id: admin.id,
+          email: admin.email,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          role: admin.role,
+          permissions: admin.permissions
+        }
+      };
+    } catch (error) {
+      console.error('Stop impersonation error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AuthService(); 

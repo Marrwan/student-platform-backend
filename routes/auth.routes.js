@@ -46,4 +46,10 @@ router.put('/notifications', authenticateToken, authController.updateNotificatio
 // Logout
 router.post('/logout', authenticateToken, authController.logout);
 
+// Stop impersonation — must be defined BEFORE /:userId to avoid "stop" being treated as a userId
+router.post('/impersonate/stop', authenticateToken, authController.stopImpersonation);
+
+// Impersonate user (admin only)
+router.post('/impersonate/:userId', authenticateToken, authController.impersonateUser);
+
 module.exports = router;

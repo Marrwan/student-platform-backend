@@ -36,6 +36,12 @@ class AssignmentsController {
       res.json(result);
     } catch (error) {
       console.error('Error in getAssignmentById controller:', error);
+      const ValidationError = require('../utils/errors');
+      if (error instanceof ValidationError || error.name === 'ValidationError') {
+        return res.status(400).json({ message: error.message, type: error.type || 'sequential_lock' });
+      }
+      if (error.message === 'Assignment not found') return res.status(404).json({ message: error.message });
+      if (error.message === 'Access denied') return res.status(403).json({ message: error.message });
       res.status(500).json({ message: error.message });
     }
   }
@@ -128,6 +134,10 @@ class AssignmentsController {
       res.status(201).json(result);
     } catch (error) {
       console.error('Error in submitAssignment controller:', error);
+      const ValidationError = require('../utils/errors');
+      if (error instanceof ValidationError || error.name === 'ValidationError') {
+        return res.status(400).json({ message: error.message, type: error.type || 'validation' });
+      }
       res.status(500).json({ message: error.message });
     }
   }
