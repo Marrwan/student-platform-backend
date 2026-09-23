@@ -15,6 +15,8 @@ class Topic extends Model
         'title',
         'slug',
         'type',
+        'runner_type',
+        'sandbox_config',
         'content_markdown',
         'video_url',
         'starter_code',
@@ -26,6 +28,7 @@ class Topic extends Model
 
     protected $casts = [
         'starter_code' => 'array',
+        'sandbox_config' => 'array',
         'order_index' => 'integer',
         'estimated_minutes' => 'integer',
         'deadline_hours' => 'integer',

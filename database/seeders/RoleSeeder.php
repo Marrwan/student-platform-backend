@@ -18,6 +18,16 @@ class RoleSeeder extends Seeder
     {
         $this->application->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        // Admin Role
+        $adminRole = Role::query()->firstOrCreate([
+            'name' => 'Admin',
+            'guard_name' => 'sanctum',
+        ]);
+
+        $adminRole->syncPermissions(
+            Permission::query()->where('guard_name', 'sanctum')->pluck('name')->all()
+        );
+
         // Super Admin Role
         $superAdminRole = Role::query()->firstOrCreate([
             'name' => 'Super Admin',
@@ -90,7 +100,7 @@ class RoleSeeder extends Seeder
                 ->all()
         );
 
-        // Create Default Super Admin Account
+        // Create Default Admin Account
         $admin = User::firstOrCreate(
             ['email' => 'admin@strangedev.com'],
             [
@@ -101,7 +111,7 @@ class RoleSeeder extends Seeder
             ]
         );
 
-        $admin->assignRole($superAdminRole);
+        $admin->syncRoles([$adminRole, $superAdminRole]);
 
         $this->application->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
